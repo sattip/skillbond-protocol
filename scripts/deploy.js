@@ -11,8 +11,11 @@ async function main() {
   const USDC_ADDRESS = process.env.USDC_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
   console.log("Using USDC at:", USDC_ADDRESS);
 
+  const FLAG_THRESHOLD = 3; // 3 independent flags needed for community slash
+  console.log("Flag threshold:", FLAG_THRESHOLD);
+
   const SkillBondRegistry = await hre.ethers.getContractFactory("SkillBondRegistry");
-  const registry = await SkillBondRegistry.deploy(USDC_ADDRESS);
+  const registry = await SkillBondRegistry.deploy(USDC_ADDRESS, FLAG_THRESHOLD);
   await registry.waitForDeployment();
 
   const address = await registry.getAddress();
@@ -20,7 +23,7 @@ async function main() {
   console.log("SkillBondRegistry deployed to:", address);
   console.log("========================================");
   console.log("\nVerify with:");
-  console.log(`npx hardhat verify --network baseSepolia ${address} ${USDC_ADDRESS}`);
+  console.log(`npx hardhat verify --network baseSepolia ${address} ${USDC_ADDRESS} ${FLAG_THRESHOLD}`);
 }
 
 main()

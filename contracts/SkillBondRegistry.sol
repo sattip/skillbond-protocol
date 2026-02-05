@@ -18,6 +18,14 @@ contract SkillBondRegistry {
     uint256 public constant WHISTLEBLOWER_BPS = 8000; // 80%
     uint256 public constant COOLDOWN_PERIOD = 7 days;
 
+    // Trust tier thresholds
+    uint256 public constant TIER_BASIC = 100 * 10**6;     // 100 USDC
+    uint256 public constant TIER_VERIFIED = 1000 * 10**6;  // 1,000 USDC
+    uint256 public constant TIER_PREMIUM = 10000 * 10**6;  // 10,000 USDC
+
+    // Flag threshold for community slashing (decentralized)
+    uint256 public flagThreshold;
+
     struct SkillBond {
         address owner;
         uint256 stakeAmount;
@@ -25,6 +33,7 @@ contract SkillBondRegistry {
         bool isSlashed;
         uint256 stakedAt;
         uint256 flagCount;
+        address firstFlagger;  // Tracks who flagged first (gets bounty on community slash)
     }
 
     mapping(bytes32 => SkillBond) public skills;
@@ -43,15 +52,17 @@ contract SkillBondRegistry {
     event SkillSlashed(bytes32 indexed skillId, address indexed whistleblower, uint256 bounty, uint256 burned);
     event SkillWithdrawn(bytes32 indexed skillId, address indexed owner, uint256 amount);
     event AdminTransferred(address indexed oldAdmin, address indexed newAdmin);
+    event FlagThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
         _;
     }
 
-    constructor(address _usdc) {
+    constructor(address _usdc, uint256 _flagThreshold) {
         usdc = IERC20(_usdc);
         admin = msg.sender;
+        flagThreshold = _flagThreshold;
     }
 
     /// @notice Register a skill by staking USDC. Minimum 100 USDC.
@@ -70,7 +81,8 @@ contract SkillBondRegistry {
             metadataURI: _metadataURI,
             isSlashed: false,
             stakedAt: block.timestamp,
-            flagCount: 0
+            flagCount: 0,
+            firstFlagger: address(0)
         });
 
         totalSkillsRegistered++;
@@ -88,6 +100,9 @@ contract SkillBondRegistry {
 
         hasFlagged[_skillId][msg.sender] = true;
         s.flagCount++;
+        if (s.firstFlagger == address(0)) {
+            s.firstFlagger = msg.sender;
+        }
 
         emit SkillFlagged(_skillId, msg.sender, s.flagCount);
     }
@@ -134,6 +149,32 @@ contract SkillBondRegistry {
         emit SkillWithdrawn(_skillId, msg.sender, amount);
     }
 
+    /// @notice Community slash — anyone can execute once flag threshold is met.
+    ///         Bounty goes to the first flagger. No admin needed.
+    /// @param _skillId The skill to slash
+    function communitySlash(bytes32 _skillId) external {
+        require(flagThreshold > 0, "Community slash disabled");
+        SkillBond storage s = skills[_skillId];
+        require(!s.isSlashed, "Already slashed");
+        require(s.stakeAmount > 0, "Nothing to slash");
+        require(s.flagCount >= flagThreshold, "Below flag threshold");
+        require(s.firstFlagger != address(0), "No flagger recorded");
+
+        uint256 total = s.stakeAmount;
+        uint256 bounty = (total * WHISTLEBLOWER_BPS) / 10000;
+        uint256 burned = total - bounty;
+
+        s.isSlashed = true;
+        s.stakeAmount = 0;
+        insuranceFund += burned;
+        totalSlashed++;
+        totalBountiesPaid += bounty;
+
+        require(usdc.transfer(s.firstFlagger, bounty), "Bounty transfer failed");
+
+        emit SkillSlashed(_skillId, s.firstFlagger, bounty, burned);
+    }
+
     // ---- View Functions ----
 
     /// @notice Check if a skill is bonded and trusted
@@ -141,6 +182,25 @@ contract SkillBondRegistry {
         SkillBond storage s = skills[_skillId];
         trusted = s.owner != address(0) && !s.isSlashed && s.stakeAmount > 0;
         stake = s.stakeAmount;
+    }
+
+    /// @notice Get trust tier for a skill (0=none, 1=basic, 2=verified, 3=premium)
+    ///         Agents can set their own minimum tier to load skills.
+    function getTrustTier(bytes32 _skillId) external view returns (uint256 tier) {
+        SkillBond storage s = skills[_skillId];
+        if (s.owner == address(0) || s.isSlashed || s.stakeAmount == 0) return 0;
+        if (s.stakeAmount >= TIER_PREMIUM) return 3;
+        if (s.stakeAmount >= TIER_VERIFIED) return 2;
+        return 1;
+    }
+
+    /// @notice Check if skill meets a specific trust tier threshold
+    function isSkillTrustedAtTier(bytes32 _skillId, uint256 _minTier) external view returns (bool) {
+        SkillBond storage s = skills[_skillId];
+        if (s.owner == address(0) || s.isSlashed || s.stakeAmount == 0) return false;
+        if (_minTier >= 3) return s.stakeAmount >= TIER_PREMIUM;
+        if (_minTier >= 2) return s.stakeAmount >= TIER_VERIFIED;
+        return true;
     }
 
     /// @notice Get full skill bond details
@@ -172,5 +232,10 @@ contract SkillBondRegistry {
         require(_newAdmin != address(0), "Invalid admin");
         emit AdminTransferred(admin, _newAdmin);
         admin = _newAdmin;
+    }
+
+    function setFlagThreshold(uint256 _newThreshold) external onlyAdmin {
+        emit FlagThresholdUpdated(flagThreshold, _newThreshold);
+        flagThreshold = _newThreshold;
     }
 }

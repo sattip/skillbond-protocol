@@ -6,6 +6,7 @@ describe("SkillBondRegistry", function () {
   let admin, skillOwner, hunter, randomUser;
   const STAKE_AMOUNT = 100n * 10n ** 6n;
   const SKILL_ID = ethers.keccak256(ethers.toUtf8Bytes("test-skill-v1.0"));
+  const FLAG_THRESHOLD = 3;
 
   beforeEach(async function () {
     [admin, skillOwner, hunter, randomUser] = await ethers.getSigners();
@@ -15,11 +16,11 @@ describe("SkillBondRegistry", function () {
     await usdc.waitForDeployment();
 
     const Registry = await ethers.getContractFactory("SkillBondRegistry");
-    registry = await Registry.deploy(await usdc.getAddress());
+    registry = await Registry.deploy(await usdc.getAddress(), FLAG_THRESHOLD);
     await registry.waitForDeployment();
 
-    await usdc.mint(skillOwner.address, 1000n * 10n ** 6n);
-    await usdc.connect(skillOwner).approve(await registry.getAddress(), STAKE_AMOUNT);
+    await usdc.mint(skillOwner.address, 50000n * 10n ** 6n);
+    await usdc.connect(skillOwner).approve(await registry.getAddress(), 50000n * 10n ** 6n);
   });
 
   describe("Staking", function () {
@@ -38,7 +39,6 @@ describe("SkillBondRegistry", function () {
 
     it("should reject duplicate skill registration", async function () {
       await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", STAKE_AMOUNT);
-      await usdc.connect(skillOwner).approve(await registry.getAddress(), STAKE_AMOUNT);
       await expect(
         registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata2", STAKE_AMOUNT)
       ).to.be.revertedWith("Skill already registered");
@@ -72,9 +72,17 @@ describe("SkillBondRegistry", function () {
       await expect(registry.connect(skillOwner).flagSkill(SKILL_ID))
         .to.be.revertedWith("Cannot flag own skill");
     });
+
+    it("should track the first flagger", async function () {
+      await registry.connect(hunter).flagSkill(SKILL_ID);
+      await registry.connect(randomUser).flagSkill(SKILL_ID);
+      // First flagger is stored internally — verify via community slash later
+      const bond = await registry.getSkillBond(SKILL_ID);
+      expect(bond.flagCount).to.equal(2);
+    });
   });
 
-  describe("Slashing (The Execution)", function () {
+  describe("Slashing (Admin)", function () {
     beforeEach(async function () {
       await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", STAKE_AMOUNT);
       await registry.connect(hunter).flagSkill(SKILL_ID);
@@ -123,6 +131,114 @@ describe("SkillBondRegistry", function () {
     });
   });
 
+  describe("Community Slash (Decentralized)", function () {
+    let signers;
+
+    beforeEach(async function () {
+      signers = await ethers.getSigners();
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", STAKE_AMOUNT);
+    });
+
+    it("should reject community slash below flag threshold", async function () {
+      await registry.connect(hunter).flagSkill(SKILL_ID);
+      await registry.connect(randomUser).flagSkill(SKILL_ID);
+      // Only 2 flags, threshold is 3
+      await expect(
+        registry.connect(randomUser).communitySlash(SKILL_ID)
+      ).to.be.revertedWith("Below flag threshold");
+    });
+
+    it("should execute community slash when threshold is met", async function () {
+      // 3 independent agents flag
+      await registry.connect(signers[2]).flagSkill(SKILL_ID);
+      await registry.connect(signers[3]).flagSkill(SKILL_ID);
+      await registry.connect(signers[4]).flagSkill(SKILL_ID);
+
+      const firstFlaggerBefore = await usdc.balanceOf(signers[2].address);
+      // Anyone can call communitySlash now
+      await registry.connect(signers[5]).communitySlash(SKILL_ID);
+      const firstFlaggerAfter = await usdc.balanceOf(signers[2].address);
+
+      const bounty = (STAKE_AMOUNT * 8000n) / 10000n;
+      expect(firstFlaggerAfter - firstFlaggerBefore).to.equal(bounty);
+
+      const [trusted] = await registry.isSkillTrusted(SKILL_ID);
+      expect(trusted).to.be.false;
+    });
+
+    it("should pay the first flagger on community slash", async function () {
+      await registry.connect(hunter).flagSkill(SKILL_ID);
+      await registry.connect(randomUser).flagSkill(SKILL_ID);
+      await registry.connect(signers[4]).flagSkill(SKILL_ID);
+
+      const hunterBefore = await usdc.balanceOf(hunter.address);
+      await registry.connect(signers[5]).communitySlash(SKILL_ID);
+      const hunterAfter = await usdc.balanceOf(hunter.address);
+
+      const bounty = (STAKE_AMOUNT * 8000n) / 10000n;
+      expect(hunterAfter - hunterBefore).to.equal(bounty);
+    });
+
+    it("should reject community slash when disabled (threshold=0)", async function () {
+      // Deploy a new registry with threshold=0
+      const Registry = await ethers.getContractFactory("SkillBondRegistry");
+      const noThresholdRegistry = await Registry.deploy(await usdc.getAddress(), 0);
+      await noThresholdRegistry.waitForDeployment();
+
+      await usdc.connect(skillOwner).approve(await noThresholdRegistry.getAddress(), STAKE_AMOUNT);
+      const skillId2 = ethers.keccak256(ethers.toUtf8Bytes("test-v2"));
+      await noThresholdRegistry.connect(skillOwner).stakeSkill(skillId2, "ipfs://m", STAKE_AMOUNT);
+      await noThresholdRegistry.connect(hunter).flagSkill(skillId2);
+
+      await expect(
+        noThresholdRegistry.connect(randomUser).communitySlash(skillId2)
+      ).to.be.revertedWith("Community slash disabled");
+    });
+  });
+
+  describe("Trust Tiers", function () {
+    it("should return tier 0 for unregistered skill", async function () {
+      const tier = await registry.getTrustTier(SKILL_ID);
+      expect(tier).to.equal(0);
+    });
+
+    it("should return tier 1 for basic stake (100 USDC)", async function () {
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", STAKE_AMOUNT);
+      const tier = await registry.getTrustTier(SKILL_ID);
+      expect(tier).to.equal(1);
+    });
+
+    it("should return tier 2 for verified stake (1000 USDC)", async function () {
+      const verifiedStake = 1000n * 10n ** 6n;
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", verifiedStake);
+      const tier = await registry.getTrustTier(SKILL_ID);
+      expect(tier).to.equal(2);
+    });
+
+    it("should return tier 3 for premium stake (10000 USDC)", async function () {
+      const premiumStake = 10000n * 10n ** 6n;
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", premiumStake);
+      const tier = await registry.getTrustTier(SKILL_ID);
+      expect(tier).to.equal(3);
+    });
+
+    it("should return tier 0 for slashed skill", async function () {
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", STAKE_AMOUNT);
+      await registry.connect(hunter).flagSkill(SKILL_ID);
+      await registry.connect(admin).executeSlash(SKILL_ID, hunter.address);
+      const tier = await registry.getTrustTier(SKILL_ID);
+      expect(tier).to.equal(0);
+    });
+
+    it("isSkillTrustedAtTier should work correctly", async function () {
+      const verifiedStake = 1000n * 10n ** 6n;
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", verifiedStake);
+      expect(await registry.isSkillTrustedAtTier(SKILL_ID, 1)).to.be.true;
+      expect(await registry.isSkillTrustedAtTier(SKILL_ID, 2)).to.be.true;
+      expect(await registry.isSkillTrustedAtTier(SKILL_ID, 3)).to.be.false;
+    });
+  });
+
   describe("Withdrawal", function () {
     beforeEach(async function () {
       await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", STAKE_AMOUNT);
@@ -147,6 +263,21 @@ describe("SkillBondRegistry", function () {
       await registry.connect(admin).executeSlash(SKILL_ID, hunter.address);
       await expect(registry.connect(skillOwner).withdrawStake(SKILL_ID))
         .to.be.revertedWith("Skill was slashed");
+    });
+  });
+
+  describe("Admin", function () {
+    it("should allow admin to update flag threshold", async function () {
+      await expect(registry.connect(admin).setFlagThreshold(5))
+        .to.emit(registry, "FlagThresholdUpdated")
+        .withArgs(3, 5);
+      expect(await registry.flagThreshold()).to.equal(5);
+    });
+
+    it("should reject non-admin threshold update", async function () {
+      await expect(
+        registry.connect(hunter).setFlagThreshold(5)
+      ).to.be.revertedWith("Only admin");
     });
   });
 });
