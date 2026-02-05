@@ -4,7 +4,7 @@ const { ethers } = require("hardhat");
 describe("SkillBondRegistry", function () {
   let registry, usdc;
   let admin, skillOwner, hunter, randomUser;
-  const STAKE_AMOUNT = 100n * 10n ** 6n;
+  const STAKE_AMOUNT = 25n * 10n ** 6n;
   const SKILL_ID = ethers.keccak256(ethers.toUtf8Bytes("test-skill-v1.0"));
   const FLAG_THRESHOLD = 3;
 
@@ -33,7 +33,7 @@ describe("SkillBondRegistry", function () {
 
     it("should reject stake below minimum", async function () {
       await expect(
-        registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", 50n * 10n ** 6n)
+        registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", 10n * 10n ** 6n)
       ).to.be.revertedWith("Below minimum stake");
     });
 
@@ -126,8 +126,8 @@ describe("SkillBondRegistry", function () {
       const stats = await registry.getStats();
       expect(stats[0]).to.equal(1);
       expect(stats[1]).to.equal(1);
-      expect(stats[2]).to.equal(80n * 10n ** 6n);
-      expect(stats[3]).to.equal(20n * 10n ** 6n);
+      expect(stats[2]).to.equal(20n * 10n ** 6n);
+      expect(stats[3]).to.equal(5n * 10n ** 6n);
     });
   });
 
@@ -202,15 +202,15 @@ describe("SkillBondRegistry", function () {
       expect(tier).to.equal(0);
     });
 
-    it("should return tier 1 for basic stake (100 USDC)", async function () {
+    it("should return tier 1 for basic stake (25 USDC)", async function () {
       await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", STAKE_AMOUNT);
       const tier = await registry.getTrustTier(SKILL_ID);
       expect(tier).to.equal(1);
     });
 
-    it("should return tier 2 for verified stake (1000 USDC)", async function () {
-      const verifiedStake = 1000n * 10n ** 6n;
-      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", verifiedStake);
+    it("should return tier 2 for standard stake (500 USDC)", async function () {
+      const standardStake = 500n * 10n ** 6n;
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", standardStake);
       const tier = await registry.getTrustTier(SKILL_ID);
       expect(tier).to.equal(2);
     });
@@ -231,8 +231,8 @@ describe("SkillBondRegistry", function () {
     });
 
     it("isSkillTrustedAtTier should work correctly", async function () {
-      const verifiedStake = 1000n * 10n ** 6n;
-      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", verifiedStake);
+      const standardStake = 500n * 10n ** 6n;
+      await registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://m", standardStake);
       expect(await registry.isSkillTrustedAtTier(SKILL_ID, 1)).to.be.true;
       expect(await registry.isSkillTrustedAtTier(SKILL_ID, 2)).to.be.true;
       expect(await registry.isSkillTrustedAtTier(SKILL_ID, 3)).to.be.false;

@@ -14,14 +14,14 @@ contract SkillBondRegistry {
     IERC20 public immutable usdc;
     address public admin;
 
-    uint256 public constant MIN_STAKE = 100 * 10**6; // 100 USDC (6 decimals)
+    uint256 public constant MIN_STAKE = 25 * 10**6; // 25 USDC (6 decimals)
     uint256 public constant WHISTLEBLOWER_BPS = 8000; // 80%
     uint256 public constant COOLDOWN_PERIOD = 7 days;
 
     // Trust tier thresholds
-    uint256 public constant TIER_BASIC = 100 * 10**6;     // 100 USDC
-    uint256 public constant TIER_VERIFIED = 1000 * 10**6;  // 1,000 USDC
-    uint256 public constant TIER_PREMIUM = 10000 * 10**6;  // 10,000 USDC
+    uint256 public constant TIER_BASIC = 25 * 10**6;       // 25 USDC
+    uint256 public constant TIER_STANDARD = 500 * 10**6;    // 500 USDC
+    uint256 public constant TIER_PREMIUM = 10000 * 10**6;   // 10,000 USDC
 
     // Flag threshold for community slashing (decentralized)
     uint256 public flagThreshold;
@@ -65,7 +65,7 @@ contract SkillBondRegistry {
         flagThreshold = _flagThreshold;
     }
 
-    /// @notice Register a skill by staking USDC. Minimum 100 USDC.
+    /// @notice Register a skill by staking USDC. Minimum 25 USDC.
     /// @param _skillId Unique identifier (keccak256 of skill name + version)
     /// @param _metadataURI Link to skill manifest (IPFS, GitHub, etc.)
     /// @param _amount Amount of USDC to stake (6 decimals)
@@ -184,13 +184,13 @@ contract SkillBondRegistry {
         stake = s.stakeAmount;
     }
 
-    /// @notice Get trust tier for a skill (0=none, 1=basic, 2=verified, 3=premium)
+    /// @notice Get trust tier for a skill (0=none/revoked, 1=basic, 2=standard, 3=premium)
     ///         Agents can set their own minimum tier to load skills.
     function getTrustTier(bytes32 _skillId) external view returns (uint256 tier) {
         SkillBond storage s = skills[_skillId];
         if (s.owner == address(0) || s.isSlashed || s.stakeAmount == 0) return 0;
         if (s.stakeAmount >= TIER_PREMIUM) return 3;
-        if (s.stakeAmount >= TIER_VERIFIED) return 2;
+        if (s.stakeAmount >= TIER_STANDARD) return 2;
         return 1;
     }
 
@@ -199,7 +199,7 @@ contract SkillBondRegistry {
         SkillBond storage s = skills[_skillId];
         if (s.owner == address(0) || s.isSlashed || s.stakeAmount == 0) return false;
         if (_minTier >= 3) return s.stakeAmount >= TIER_PREMIUM;
-        if (_minTier >= 2) return s.stakeAmount >= TIER_VERIFIED;
+        if (_minTier >= 2) return s.stakeAmount >= TIER_STANDARD;
         return true;
     }
 
