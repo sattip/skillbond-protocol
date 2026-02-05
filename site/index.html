@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SkillBond v2 - Economic Proof-of-Trust for AI Agent Skills</title>
+<title>SkillBond v3 - Economic Proof-of-Trust for AI Agent Skills</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -540,11 +540,12 @@ footer a:hover { color: var(--g); }
 
 <!-- NAV -->
 <nav>
-  <a class="logo" href="#"><span class="logo-box"></span>SkillBond <sup>v2</sup></a>
+  <a class="logo" href="#"><span class="logo-box"></span>SkillBond <sup>v3</sup></a>
   <div class="nav-c">
     <a href="#architecture">Architecture</a>
     <a href="#demo">Demo</a>
     <a href="#evidence">Evidence</a>
+    <a href="#fees">Fees</a>
     <a href="#bear-case">Bear Case</a>
     <a href="#reality">Properties</a>
     <a href="#moats">Defensibility</a>
@@ -586,9 +587,10 @@ footer a:hover { color: var(--g); }
 <div class="stats">
   <div><div class="stat-v">80%</div><div class="stat-l">To Whistleblower</div></div>
   <div><div class="stat-v">20%</div><div class="stat-l">Insurance Fund</div></div>
-  <div><div class="stat-v">49/49</div><div class="stat-l">Tests Passing</div></div>
+  <div><div class="stat-v">64/64</div><div class="stat-l">Tests Passing</div></div>
   <div><div class="stat-v">3</div><div class="stat-l">Trust Signals</div></div>
   <div><div class="stat-v">$25</div><div class="stat-l">Min Stake</div></div>
+  <div><div class="stat-v">0.05 USDC</div><div class="stat-l">Query Fee</div></div>
 </div>
 
 <!-- PROBLEM -->
@@ -654,7 +656,7 @@ footer a:hover { color: var(--g); }
   <div class="term">
     <div class="term-bar">
       <div class="term-dots"><span></span><span></span><span></span></div>
-      <div class="term-title">skillbond-v2-demo.js</div>
+      <div class="term-title">skillbond-v3-demo.js</div>
     </div>
     <div class="term-body" id="termBody"></div>
   </div>
@@ -691,7 +693,7 @@ footer a:hover { color: var(--g); }
 <section class="sec" id="tiers">
   <div class="sec-label">Trust Tiers</div>
   <h2 class="sec-title">Agents set their own<br>risk tolerance.</h2>
-  <p class="sec-desc">No central authority. More stake &times; more time &times; cleaner history = higher tier. Tiers are defaults &mdash; agents enforce policy-based thresholds and may require stake to scale with permission risk (e.g., <code>network-unrestricted</code> requires 10&times;). Sponsorship bonds let backers boost promising skills. <span class="tag-road">Roadmap</span></p>
+  <p class="sec-desc">No central authority. More stake &times; more time &times; cleaner history = higher tier. Tiers are defaults &mdash; agents enforce policy-based thresholds and may require stake to scale with permission risk (e.g., <code>network-unrestricted</code> requires 10&times;). Sponsorship bonds let backers boost promising skills. <span class="tag-live">Live</span></p>
   <table class="tt">
     <thead><tr><th>Tier</th><th>Min Stake</th><th>Min Age</th><th>Signal</th></tr></thead>
     <tbody>
@@ -724,6 +726,37 @@ footer a:hover { color: var(--g); }
 <span class="kw">const</span> profile = <span class="kw">await</span> sb.<span class="fn2">getTrustProfile</span>(skillId);
 <span class="kw">if</span> (profile.status === <span class="str">"WITHDRAWING"</span>) <span class="kw">throw</span> <span class="str">"dev pulling capital"</span>;
 <span class="kw">if</span> (profile.manifestChangedWithin(<span class="num">7</span>)) <span class="kw">throw</span> <span class="str">"perms changed recently"</span>;
+    </div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- FEE ECONOMICS -->
+<section class="sec" id="fees">
+  <div class="sec-label">Fee Economics</div>
+  <h2 class="sec-title">Trust queries generate<br>passive revenue.</h2>
+  <p class="sec-desc">Every <code>queryTrust</code> call costs 0.05 USDC. Fees split automatically on-chain &mdash; skill owners earn for building trusted skills, while the protocol funds its own insurance layer.</p>
+  <table class="tt">
+    <thead><tr><th>Action</th><th>Cost</th><th>To Skill Owner</th><th>To Insurance</th></tr></thead>
+    <tbody>
+      <tr>
+        <td style="font-weight: 600;">queryTrust(skillId)</td>
+        <td class="tier-mono">0.05 USDC</td>
+        <td><span class="tier-b t2">70% (0.035)</span></td>
+        <td><span class="tier-b t1">30% (0.015)</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="grid-2" style="margin-top: 32px;">
+    <div class="card" style="border-left: 3px solid var(--g);">
+      <div class="card-num">REVENUE MODEL</div>
+      <h3>x402-Style Micropayments</h3>
+      <p>Agents pay per trust query. High-traffic skills generate meaningful revenue for their developers. 1,000 queries/day = $35/day to the skill owner. The protocol self-funds its insurance pool from the 30% cut &mdash; no external subsidy needed.</p>
+    </div>
+    <div class="card" style="border-left: 3px solid var(--b);">
+      <div class="card-num">PASSIVE INCOME</div>
+      <h3>claimFees() for Developers</h3>
+      <p>Accumulated query fees are claimable anytime via <code>claimFees(skillId)</code>. No lockup, no vesting. Build a trusted skill, maintain it, earn from every agent that queries it. Staking becomes an investment, not a cost.</p>
     </div>
   </div>
 </section>
@@ -802,7 +835,7 @@ footer a:hover { color: var(--g); }
       </div>
       <div class="obj-body"><div class="obj-content">
         <div class="obj-fear"><h4>The Fear</h4><p>Only established agents can afford $10K Premium bonds. Innovative lean agents get stuck at Basic and are ignored. The protocol becomes a moat for incumbents, not a meritocracy.</p></div>
-        <div class="obj-fix"><h4>The Fix</h4><p><strong>Sponsorship bonds.</strong> <span class="tag-road">Roadmap</span> DAOs, accelerators, or backers can bond USDC on a promising skill's behalf. Sponsorship affects stake/tier but does not override permission risk or flag history &mdash; agents can treat sponsored stake differently from self-bonded stake. No on-chain revenue share (avoids securities complexity). $25 minimum keeps the door open.</p></div>
+        <div class="obj-fix"><h4>The Fix</h4><p><strong>Sponsorship bonds.</strong> <span class="tag-live">Live</span> Third parties can co-stake USDC on any skill via <code>sponsorSkill(skillId, amount)</code>. Sponsored capital counts toward tier thresholds &mdash; a $25 self-stake + $475 sponsor = Standard tier. Sponsors share slashing risk: if the skill is slashed, sponsor capital is slashed too. Withdrawable after 7-day cooldown via <code>withdrawSponsorship()</code>. Solves the capital barrier: DAOs, accelerators, or backers can boost promising skills without the developer needing $10K upfront.</p></div>
       </div></div>
     </div>
 
@@ -824,6 +857,8 @@ footer a:hover { color: var(--g); }
       <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Whistleblower economics make false flagging EV-negative (50% counter-stake from bonded verifiers).</span></div>
       <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Progressive decentralization: transparent committee with published criteria &rarr; Kleros-style arbitration.</span></div>
       <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Appeals mechanism: developers can contest slashes with an appeals bond. If appeal succeeds, capital restored from insurance fund.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Fee revenue: 0.05 USDC per trust query, 70% to skill owner, 30% to insurance. Developers earn passive income via <code>claimFees()</code>.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Sponsorship bonds: third parties can co-stake on any skill, boosting tier without the developer fronting all capital. Sponsors share slashing risk.</span></div>
     </div>
     <div class="reality-doesnt">
       <h3>Does Not Deliver</h3>
@@ -963,13 +998,15 @@ var steps = [
     {t:'er',c:'x Refused to load. Decision logged locally.'},
   ],
   [
-    {t:'cm',c:'// Step 4: Slash (manifest violation with verifiable evidence)'},
+    {t:'cm',c:'// Step 4: Slash (manifest violation with on-chain evidence hash)'},
     {t:'v',c:'> verifier.flag("bad-skill-xyz", {'},
     {t:'s',c:'    type: "manifest-violation",'},
     {t:'s',c:'    evidence: "declared writes:none, observed egress to 45.33.x.x:8443",'},
-    {t:'s',c:'    proof: "0xdeadbeef...c0ffee",  // signed monitor report'},
-    {t:'bl',c:'    counterStake: 250 USDC         // 50% of target $500 bond'},
+    {t:'s',c:'    evidenceHash: "0x7f3a...b2e1", // keccak256 of signed proof, stored on-chain'},
+    {t:'s',c:'    proof: "0xdeadbeef...c0ffee",   // signed monitor report'},
+    {t:'bl',c:'    counterStake: 250 USDC          // 50% of target $500 bond'},
     {t:'v',c:'  })'},
+    {t:'ok',c:'+ Evidence hash stored: flagEvidence[skillId][flagger] = 0x7f3a...b2e1'},
     {t:'w',c:'! Flag accepted. 3/3 independent bonded verifiers confirm.'},
     {t:'w',c:'! Evidence meets v1 standard. 48h dispute window opened.'},
     {t:'w',c:'! Dev can contest with appeals bond -> reviewed by separate panel.'},

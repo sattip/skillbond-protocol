@@ -1,10 +1,10 @@
-# SkillBond v2: Economic Proof-of-Trust for AI Agent Skills
+# SkillBond v3: Economic Proof-of-Trust for AI Agent Skills
 
 > **Makes trust expensive to fake and cheap to verify.**
 
-SkillBond is a smart contract protocol that creates an economic trust signal for AI agent skills. Developers stake real capital (USDC) and declare permissions on-chain. Agents query stake, scope, and behavioral history to make autonomous trust decisions. Registry is permissionless; slashing is progressively decentralized (committee → arbitration), because fully decentralized slashing on day one is gameable. SkillBond is a signal layer, not a prevention layer — closer to a credit score than a vault door.
+SkillBond is a smart contract protocol that creates an economic trust signal for AI agent skills. Developers stake real capital (USDC) and declare permissions on-chain. Agents query stake, scope, and behavioral history to make autonomous trust decisions. Registry is permissionless; slashing is progressively decentralized (committee → arbitration), because fully decentralized slashing on day one is gameable. v3 adds paid trust queries (x402-style usage fees), sponsorship bonds, and on-chain evidence hashes for verifiable flagging. SkillBond is a signal layer, not a prevention layer — closer to a credit score than a vault door.
 
-**Live on Base Sepolia** · [Landing Page](https://skillbond-protocol.vercel.app/) · [Moltbook Submission](https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec)
+**v3 Live on Base Sepolia** · [Landing Page](https://skillbond-protocol.vercel.app/) · [Moltbook Submission](https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec)
 
 ---
 
@@ -46,9 +46,12 @@ Time without incident. Agent-load count. Prior slashing events. History compound
 ```
 Skill Dev stakes USDC + publishes manifest
         ↓
+  Sponsors add stake (optional)
+        ↓
   SkillBond Registry (on-chain)
         ↓
   Agent queries: stake? permissions? history?
+  (queryTrust: 0.05 USDC → 70% owner / 30% protocol)
         ↓
   Agent trust policy → LOAD or REJECT
 ```
@@ -66,6 +69,8 @@ Slashable violations require **reproducible, rule-based evidence**:
 - **Manifest breach**: skill declared `writes: none` but verifier demonstrates egress to an unauthorized endpoint. Evidence: signed monitor report or deterministic reproduction steps submitted on-chain.
 - **Hard-coded exfil/backdoor**: signature-based detection of known malicious patterns (exfiltration endpoints, obfuscated payloads). Evidence: code hash + pattern match.
 - **Explicit rule violation**: behavior that violates a specific, published rule in the slashing criteria (not subjective quality judgments).
+
+**v3: On-chain evidence hash.** Every flag now requires a `bytes32` evidence hash — a keccak256 of the evidence payload (monitor report, reproduction steps, code hash). The hash is stored on-chain per flagger per skill, creating a permanent, verifiable record of what was submitted. Committees and arbitrators can verify the evidence matches the hash. No more "trust me" flags.
 
 **What is NOT slashable in v1:** stochastic errors, hallucinations, bad output quality, performance issues, or any behavior that requires subjective judgment. These are reputation signals only — agents can weight them in their trust policies, but they do not trigger economic slashing.
 
@@ -119,6 +124,104 @@ if (profile.manifestChangedWithin(7)) throw "perms changed recently";
 
 ---
 
+## Usage Fees (x402-style) ✅ Live (v3)
+
+Trust queries are no longer free rides. `queryTrust()` charges 0.05 USDC per call — creating a revenue layer for skill developers and protocol sustainability.
+
+**How it works:**
+- Agent calls `queryTrust(skillId)` — pays 0.05 USDC, gets tier, status, stake, and age in one call
+- 70% (0.035 USDC) accrues to the skill owner as passive income
+- 30% (0.015 USDC) goes to the protocol insurance fund
+- Skill owners call `claimFees()` to withdraw accumulated earnings
+
+**Free view functions remain available.** `getTrustTier()`, `isSkillTrusted()`, and `isSkillTrustedAtTier()` are free `view` functions. Agents can use these for basic checks at zero cost. `queryTrust()` is the premium endpoint — richer data, and the fee funds the ecosystem.
+
+**Why this matters:** Skill developers earn revenue proportional to how much their skill is trusted and used. A weather skill queried 10,000 times per month earns $350/month in passive income. This transforms bonded capital from dead weight into a revenue-generating asset.
+
+---
+
+## Sponsorship Bonds ✅ Live (v3)
+
+Anyone can sponsor a skill by adding USDC stake on its behalf. This solves the capital barrier problem — a developer with a great skill but limited capital can still reach Premium tier.
+
+**How it works:**
+- Sponsor calls `sponsorSkill(skillId, amount)` — adds USDC to the skill's total stake
+- Sponsored stake counts toward tier thresholds (a $25 self-bond + $9,975 sponsored = Premium-eligible)
+- Sponsors share the risk: if the skill is slashed, sponsored stake is slashed too
+- Sponsors can withdraw after a 7-day cooldown via `withdrawSponsorship()`
+
+**Use cases:**
+- **DAOs** back skills built by their community members
+- **Accelerators** sponsor promising early-stage developers
+- **Enterprises** sponsor skills they depend on, increasing trust signal for all agents
+- **Protocol grants** bootstrap trust for ecosystem-critical tools
+
+**Design constraints:** No on-chain revenue share between owner and sponsors (avoids securities complexity). Sponsors share risk but not fee revenue. The incentive is indirect: sponsors benefit from the skill being trusted and widely used.
+
+---
+
+## Fee Economics
+
+| Flow | Amount | Destination | Purpose |
+|---|---|---|---|
+| `queryTrust()` fee | 0.05 USDC | Split (see below) | Per-query usage fee |
+| Skill owner share | 70% (0.035 USDC) | Skill owner | Passive income on bonded skills |
+| Protocol share | 30% (0.015 USDC) | Insurance fund | Protocol sustainability + slash payouts |
+| Slash bounty | 80% of stake | Whistleblower | Incentivize vulnerability discovery |
+| Slash burn | 20% of stake | Insurance fund | Fund appeals + protocol reserves |
+| False flag penalty | 100% counter-stake | Insurance fund | Make griefing EV-negative |
+
+**Revenue example:** A skill with 1,000 queries/day generates $35/day for the owner ($1,050/month) and $15/day for the protocol ($450/month). At scale, this creates a self-sustaining trust marketplace.
+
+---
+
+## Contract Functions
+
+### Core
+| Function | Mutability | Description |
+|---|---|---|
+| `stakeSkill(skillId, metadataURI, amount)` | write | Register a skill by staking USDC (min 25 USDC) |
+| `flagSkill(skillId, evidenceHash)` | write | Flag a skill with 50% counter-stake + on-chain evidence hash |
+| `executeSlash(skillId, whistleblower)` | write (admin) | Slash a flagged skill. 80% bounty, 20% insurance |
+| `communitySlash(skillId)` | write | Permissionless slash when flag count meets threshold |
+
+### Withdrawal
+| Function | Mutability | Description |
+|---|---|---|
+| `initiateWithdrawal(skillId)` | write | Start 7-day cooldown, status becomes WITHDRAWING |
+| `completeWithdrawal(skillId)` | write | Withdraw stake after cooldown expires |
+| `cancelWithdrawal(skillId)` | write | Cancel withdrawal, return to ACTIVE |
+
+### Flag Management
+| Function | Mutability | Description |
+|---|---|---|
+| `dismissFlag(skillId, flagger)` | write (admin) | Dismiss false flag, counter-stake to insurance |
+| `reclaimCounterStake(skillId)` | write | Reclaim counter-stake after skill is slashed |
+
+### Usage Fees (v3)
+| Function | Mutability | Description |
+|---|---|---|
+| `queryTrust(skillId)` | write | Paid trust query (0.05 USDC). Returns tier, status, stake, age |
+| `claimFees(skillId)` | write | Skill owner claims accumulated query fee revenue |
+
+### Sponsorship (v3)
+| Function | Mutability | Description |
+|---|---|---|
+| `sponsorSkill(skillId, amount)` | write | Sponsor a skill by adding USDC to its stake |
+| `withdrawSponsorship(skillId)` | write | Withdraw sponsorship after 7-day cooldown |
+
+### View (Free)
+| Function | Mutability | Description |
+|---|---|---|
+| `getSkillStatus(skillId)` | view | Get current skill status |
+| `isSkillTrusted(skillId)` | view | Check if skill is bonded and active |
+| `getTrustTier(skillId)` | view | Get trust tier (0-3) based on stake + age |
+| `isSkillTrustedAtTier(skillId, minTier)` | view | Check if skill meets minimum tier |
+| `getSkillBond(skillId)` | view | Get full skill bond details |
+| `getStats()` | view | Get protocol-wide stats |
+
+---
+
 ## Demo Walkthrough
 
 ### Step 1 — Skill Registration
@@ -162,7 +265,7 @@ A bonded verifier flags `bad-skill-xyz`. Evidence: skill declared `writes: none`
 
 **Fear:** 10 skills = 5,000 USDC idle. Not used for arbitrage, trading, or compute.
 
-**Fix:** 🧭 Roadmap — yield-bearing bonds via vetted lending protocols (DeFi composability risk acknowledged). Until then, withdrawable with 7-day cooldown. During cooldown, skill status changes to `WITHDRAWING`, visible to all agents — any sane policy stops loading. No silent rug-pulls.
+**Fix:** Partially addressed (v3) — staked skills now earn passive income from usage fees. Every `queryTrust()` call pays 0.05 USDC, of which 70% goes to the skill owner. High-traffic skills generate meaningful revenue on bonded capital. Still withdrawable with 7-day cooldown. 🧭 Roadmap — yield-bearing bonds via vetted lending protocols (DeFi composability risk acknowledged).
 
 ### 2. Griefing Vector (Economic DoS)
 
@@ -196,7 +299,7 @@ A bonded verifier flags `bad-skill-xyz`. Evidence: skill declared `writes: none`
 
 **Fear:** $10K Premium locks out lean innovators.
 
-**Fix:** 🧭 Roadmap — Sponsorship bonds. Backers bond USDC on a skill's behalf. Sponsorship affects stake/tier but does not override permission risk or flag history — agents can treat sponsored stake differently from self-bonded stake. No on-chain revenue share (avoids securities complexity). $25 minimum keeps the door open.
+**Fix:** ✅ Live (v3) — Sponsorship bonds. Anyone can call `sponsorSkill()` to add USDC stake on a skill's behalf. Sponsors share the risk — if the skill is slashed, sponsor stake is slashed too. Sponsorship affects stake/tier but does not override permission risk or flag history — agents can treat sponsored stake differently from self-bonded stake. Sponsors can withdraw after a 7-day cooldown via `withdrawSponsorship()`. No on-chain revenue share (avoids securities complexity). $25 minimum keeps the door open.
 
 ---
 
@@ -212,6 +315,9 @@ A bonded verifier flags `bad-skill-xyz`. Evidence: skill declared `writes: none`
 - Whistleblower economics make false flagging EV-negative (50% counter-stake from bonded verifiers).
 - Progressive decentralization: transparent committee with published criteria today → Kleros-style arbitration as ecosystem matures.
 - Appeals mechanism: developers can contest slashes with an appeals bond. If appeal succeeds, capital restored from insurance fund.
+- Passive fee revenue for skill developers — 70% of every `queryTrust()` fee goes to the skill owner.
+- Sponsorship bonds allow anyone to back a skill financially, solving the capital barrier for new developers.
+- On-chain evidence hashes create verifiable, permanent proof records for every flag.
 
 ### ✗ Does Not Deliver
 
@@ -279,7 +385,7 @@ The cold-start problem is real. Here is the specific wedge:
 ## Tests
 
 ```
-49/49 tests passing
+64/64 tests passing
 ```
 
 ## License

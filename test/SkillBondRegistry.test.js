@@ -3,13 +3,14 @@ const { ethers } = require("hardhat");
 
 describe("SkillBondRegistry", function () {
   let registry, usdc;
-  let admin, skillOwner, hunter, randomUser, flagger2, flagger3;
+  let admin, skillOwner, hunter, randomUser, flagger2, flagger3, sponsor1, querier1;
   const USDC = 10n ** 6n;
   const STAKE_AMOUNT = 25n * USDC;
   const STANDARD_STAKE = 500n * USDC;
   const PREMIUM_STAKE = 10000n * USDC;
   const SKILL_ID = ethers.keccak256(ethers.toUtf8Bytes("weather-skill-v1"));
   const FLAG_THRESHOLD = 3;
+  const EVIDENCE_HASH = ethers.keccak256(ethers.toUtf8Bytes("evidence-data"));
   const SEVEN_DAYS = 7 * 24 * 60 * 60;
   const THIRTY_DAYS = 30 * 24 * 60 * 60;
   const NINETY_DAYS = 90 * 24 * 60 * 60;
@@ -21,7 +22,7 @@ describe("SkillBondRegistry", function () {
   const SLASHED = 3;
 
   beforeEach(async function () {
-    [admin, skillOwner, hunter, randomUser, flagger2, flagger3] = await ethers.getSigners();
+    [admin, skillOwner, hunter, randomUser, flagger2, flagger3, , sponsor1, querier1] = await ethers.getSigners();
 
     const MockERC20 = await ethers.getContractFactory("MockUSDC");
     usdc = await MockERC20.deploy();
@@ -39,6 +40,8 @@ describe("SkillBondRegistry", function () {
     await usdc.mint(randomUser.address, 5000n * USDC);
     await usdc.mint(flagger2.address, 5000n * USDC);
     await usdc.mint(flagger3.address, 5000n * USDC);
+    await usdc.mint(sponsor1.address, 50000n * USDC);
+    await usdc.mint(querier1.address, 5000n * USDC);
 
     // Approve registry for all participants
     await usdc.connect(skillOwner).approve(registryAddr, 50000n * USDC);
@@ -46,6 +49,8 @@ describe("SkillBondRegistry", function () {
     await usdc.connect(randomUser).approve(registryAddr, 5000n * USDC);
     await usdc.connect(flagger2).approve(registryAddr, 5000n * USDC);
     await usdc.connect(flagger3).approve(registryAddr, 5000n * USDC);
+    await usdc.connect(sponsor1).approve(registryAddr, 50000n * USDC);
+    await usdc.connect(querier1).approve(registryAddr, 5000n * USDC);
   });
 
   // Helper: advance time
@@ -61,7 +66,7 @@ describe("SkillBondRegistry", function () {
 
   // Helper: flag a skill
   async function flagSkill(signer, skillId) {
-    await registry.connect(signer).flagSkill(skillId);
+    await registry.connect(signer).flagSkill(skillId, EVIDENCE_HASH);
   }
 
   // ================================================================
@@ -122,20 +127,20 @@ describe("SkillBondRegistry", function () {
       await usdc.mint(noApproval.address, 5000n * USDC);
       // Do NOT approve the registry
       await expect(
-        registry.connect(noApproval).flagSkill(SKILL_ID)
+        registry.connect(noApproval).flagSkill(SKILL_ID, EVIDENCE_HASH)
       ).to.be.revertedWith("Insufficient allowance");
     });
 
     it("should prevent double-flagging", async function () {
       await flagSkill(hunter, SKILL_ID);
       await expect(
-        registry.connect(hunter).flagSkill(SKILL_ID)
+        registry.connect(hunter).flagSkill(SKILL_ID, EVIDENCE_HASH)
       ).to.be.revertedWith("Already flagged");
     });
 
     it("should prevent self-flagging", async function () {
       await expect(
-        registry.connect(skillOwner).flagSkill(SKILL_ID)
+        registry.connect(skillOwner).flagSkill(SKILL_ID, EVIDENCE_HASH)
       ).to.be.revertedWith("Cannot flag own skill");
     });
 
@@ -152,9 +157,9 @@ describe("SkillBondRegistry", function () {
 
     it("should emit SkillFlagged event with counter-stake amount", async function () {
       const expectedCounterStake = (STAKE_AMOUNT * 5000n) / 10000n;
-      await expect(registry.connect(hunter).flagSkill(SKILL_ID))
+      await expect(registry.connect(hunter).flagSkill(SKILL_ID, EVIDENCE_HASH))
         .to.emit(registry, "SkillFlagged")
-        .withArgs(SKILL_ID, hunter.address, 1, expectedCounterStake);
+        .withArgs(SKILL_ID, hunter.address, 1, expectedCounterStake, EVIDENCE_HASH);
     });
   });
 
@@ -276,7 +281,7 @@ describe("SkillBondRegistry", function () {
       await noThresholdRegistry.connect(skillOwner).stakeSkill(skillId2, "ipfs://m", STAKE_AMOUNT);
 
       await usdc.connect(hunter).approve(regAddr, 5000n * USDC);
-      await noThresholdRegistry.connect(hunter).flagSkill(skillId2);
+      await noThresholdRegistry.connect(hunter).flagSkill(skillId2, EVIDENCE_HASH);
 
       await expect(
         noThresholdRegistry.connect(randomUser).communitySlash(skillId2)
@@ -598,6 +603,222 @@ describe("SkillBondRegistry", function () {
       await expect(registry.connect(admin).executeSlash(SKILL_ID, hunter.address))
         .to.emit(registry, "SkillSlashed")
         .withArgs(SKILL_ID, hunter.address, bounty, burned);
+    });
+  });
+
+  // ================================================================
+  // EVIDENCE HASH ON FLAGGING (3 tests)
+  // ================================================================
+  describe("Evidence Hash on Flagging", function () {
+    beforeEach(async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+    });
+
+    it("should store evidence hash when flagging", async function () {
+      await registry.connect(hunter).flagSkill(SKILL_ID, EVIDENCE_HASH);
+      const stored = await registry.flagEvidence(SKILL_ID, hunter.address);
+      expect(stored).to.equal(EVIDENCE_HASH);
+    });
+
+    it("should include evidenceHash in SkillFlagged event", async function () {
+      const expectedCounterStake = (STAKE_AMOUNT * 5000n) / 10000n;
+      const customEvidence = ethers.keccak256(ethers.toUtf8Bytes("custom-evidence"));
+      await expect(registry.connect(hunter).flagSkill(SKILL_ID, customEvidence))
+        .to.emit(registry, "SkillFlagged")
+        .withArgs(SKILL_ID, hunter.address, 1, expectedCounterStake, customEvidence);
+    });
+
+    it("should track evidence per flagger per skill", async function () {
+      const evidence1 = ethers.keccak256(ethers.toUtf8Bytes("evidence-hunter"));
+      const evidence2 = ethers.keccak256(ethers.toUtf8Bytes("evidence-random"));
+
+      await registry.connect(hunter).flagSkill(SKILL_ID, evidence1);
+      await registry.connect(randomUser).flagSkill(SKILL_ID, evidence2);
+
+      expect(await registry.flagEvidence(SKILL_ID, hunter.address)).to.equal(evidence1);
+      expect(await registry.flagEvidence(SKILL_ID, randomUser.address)).to.equal(evidence2);
+    });
+  });
+
+  // ================================================================
+  // USAGE FEE / QUERY PAYMENT (6 tests)
+  // ================================================================
+  describe("Usage Fee / Query Payment", function () {
+    const QUERY_FEE = 50000n; // 0.05 USDC
+    const SKILL_OWNER_FEE_BPS = 7000n;
+
+    beforeEach(async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+    });
+
+    it("queryTrust should charge 0.05 USDC", async function () {
+      const balBefore = await usdc.balanceOf(querier1.address);
+      await registry.connect(querier1).queryTrust(SKILL_ID);
+      const balAfter = await usdc.balanceOf(querier1.address);
+      expect(balBefore - balAfter).to.equal(QUERY_FEE);
+    });
+
+    it("queryTrust should split fee 70% to skill owner, 30% to insurance", async function () {
+      const ownerShare = (QUERY_FEE * SKILL_OWNER_FEE_BPS) / 10000n;
+      const protocolShare = QUERY_FEE - ownerShare;
+
+      const insuranceBefore = await registry.insuranceFund();
+      await registry.connect(querier1).queryTrust(SKILL_ID);
+
+      const skillFees = await registry.skillFeesEarned(SKILL_ID);
+      expect(skillFees).to.equal(ownerShare);
+
+      const insuranceAfter = await registry.insuranceFund();
+      expect(insuranceAfter - insuranceBefore).to.equal(protocolShare);
+    });
+
+    it("queryTrust should increment query count", async function () {
+      expect(await registry.queryCount(SKILL_ID)).to.equal(0);
+      await registry.connect(querier1).queryTrust(SKILL_ID);
+      expect(await registry.queryCount(SKILL_ID)).to.equal(1);
+      await registry.connect(hunter).queryTrust(SKILL_ID);
+      expect(await registry.queryCount(SKILL_ID)).to.equal(2);
+    });
+
+    it("queryTrust should fail without USDC approval", async function () {
+      const signers = await ethers.getSigners();
+      const noApproval = signers[10];
+      await usdc.mint(noApproval.address, 5000n * USDC);
+      // Do NOT approve the registry
+      await expect(
+        registry.connect(noApproval).queryTrust(SKILL_ID)
+      ).to.be.revertedWith("Insufficient allowance");
+    });
+
+    it("queryTrust should return correct trust info", async function () {
+      const result = await registry.connect(querier1).queryTrust.staticCall(SKILL_ID);
+      expect(result.tier).to.equal(1); // basic tier, just staked
+      expect(result.status).to.equal(ACTIVE);
+      expect(result.stake).to.equal(STAKE_AMOUNT);
+      // age should be very small (just staked)
+      expect(result.age).to.be.gte(0);
+    });
+
+    it("claimFees should let skill owner withdraw accumulated fees", async function () {
+      // Generate some fees with multiple queries
+      await registry.connect(querier1).queryTrust(SKILL_ID);
+      await registry.connect(hunter).queryTrust(SKILL_ID);
+
+      const ownerShare = (QUERY_FEE * SKILL_OWNER_FEE_BPS) / 10000n;
+      const expectedFees = ownerShare * 2n;
+
+      const balBefore = await usdc.balanceOf(skillOwner.address);
+      await expect(registry.connect(skillOwner).claimFees(SKILL_ID))
+        .to.emit(registry, "FeesClaimedByOwner")
+        .withArgs(SKILL_ID, skillOwner.address, expectedFees);
+      const balAfter = await usdc.balanceOf(skillOwner.address);
+
+      expect(balAfter - balBefore).to.equal(expectedFees);
+
+      // Fees should be zeroed out after claim
+      expect(await registry.skillFeesEarned(SKILL_ID)).to.equal(0);
+    });
+  });
+
+  // ================================================================
+  // SPONSORSHIP BONDS (6 tests)
+  // ================================================================
+  describe("Sponsorship Bonds", function () {
+    const SPONSOR_AMOUNT = 500n * USDC;
+
+    beforeEach(async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+    });
+
+    it("sponsorSkill should add stake and increase tier", async function () {
+      // Before sponsoring: tier 1 (25 USDC basic)
+      expect(await registry.getTrustTier(SKILL_ID)).to.equal(1);
+
+      // Sponsor enough to reach TIER_STANDARD (500 USDC total)
+      const sponsorAmount = STANDARD_STAKE - STAKE_AMOUNT; // 475 USDC
+      await registry.connect(sponsor1).sponsorSkill(SKILL_ID, sponsorAmount);
+
+      const [, stake] = await registry.isSkillTrusted(SKILL_ID);
+      expect(stake).to.equal(STANDARD_STAKE);
+
+      // After 30 days, tier should be 2
+      await increaseTime(THIRTY_DAYS + 1);
+      expect(await registry.getTrustTier(SKILL_ID)).to.equal(2);
+    });
+
+    it("sponsorSkill should track sponsor's individual stake", async function () {
+      await registry.connect(sponsor1).sponsorSkill(SKILL_ID, SPONSOR_AMOUNT);
+      const sponsorStake = await registry.sponsorStakes(SKILL_ID, sponsor1.address);
+      expect(sponsorStake).to.equal(SPONSOR_AMOUNT);
+
+      // Emit event with correct newTotalStake
+      const expectedTotal = STAKE_AMOUNT + SPONSOR_AMOUNT;
+      await expect(registry.connect(hunter).sponsorSkill(SKILL_ID, 100n * USDC))
+        .to.emit(registry, "SkillSponsored")
+        .withArgs(SKILL_ID, hunter.address, 100n * USDC, expectedTotal + 100n * USDC);
+    });
+
+    it("sponsorSkill should fail on non-existent skill", async function () {
+      const fakeSkillId = ethers.keccak256(ethers.toUtf8Bytes("non-existent-skill"));
+      await expect(
+        registry.connect(sponsor1).sponsorSkill(fakeSkillId, SPONSOR_AMOUNT)
+      ).to.be.revertedWith("Skill not found");
+    });
+
+    it("withdrawSponsorship should return sponsor's stake after cooldown", async function () {
+      await registry.connect(sponsor1).sponsorSkill(SKILL_ID, SPONSOR_AMOUNT);
+
+      // Wait for cooldown
+      await increaseTime(SEVEN_DAYS + 1);
+
+      const balBefore = await usdc.balanceOf(sponsor1.address);
+      await expect(registry.connect(sponsor1).withdrawSponsorship(SKILL_ID))
+        .to.emit(registry, "SponsorshipWithdrawn")
+        .withArgs(SKILL_ID, sponsor1.address, SPONSOR_AMOUNT);
+      const balAfter = await usdc.balanceOf(sponsor1.address);
+
+      expect(balAfter - balBefore).to.equal(SPONSOR_AMOUNT);
+
+      // Skill stakeAmount should decrease back
+      const [, stake] = await registry.isSkillTrusted(SKILL_ID);
+      expect(stake).to.equal(STAKE_AMOUNT);
+    });
+
+    it("withdrawSponsorship should fail during cooldown", async function () {
+      await registry.connect(sponsor1).sponsorSkill(SKILL_ID, SPONSOR_AMOUNT);
+
+      // Try immediately (before 7-day cooldown)
+      await expect(
+        registry.connect(sponsor1).withdrawSponsorship(SKILL_ID)
+      ).to.be.revertedWith("Cooldown active");
+    });
+
+    it("sponsor stake should be included in slash (sponsor loses stake)", async function () {
+      // Sponsor adds 500 USDC on top of 25 USDC owner stake
+      await registry.connect(sponsor1).sponsorSkill(SKILL_ID, SPONSOR_AMOUNT);
+      const totalStake = STAKE_AMOUNT + SPONSOR_AMOUNT;
+
+      // Flag and slash
+      await flagSkill(hunter, SKILL_ID);
+      const bounty = (totalStake * 8000n) / 10000n;
+      const burned = totalStake - bounty;
+
+      const hunterCounterStake = (totalStake * 5000n) / 10000n;
+      const expectedPayout = bounty + hunterCounterStake;
+
+      const hunterBalBefore = await usdc.balanceOf(hunter.address);
+      await registry.connect(admin).executeSlash(SKILL_ID, hunter.address);
+      const hunterBalAfter = await usdc.balanceOf(hunter.address);
+
+      expect(hunterBalAfter - hunterBalBefore).to.equal(expectedPayout);
+
+      // Verify insurance fund received burned portion
+      expect(await registry.insuranceFund()).to.equal(burned);
+
+      // Sponsor's stake is gone — skill is slashed, stakeAmount is 0
+      const [trusted, stake] = await registry.isSkillTrusted(SKILL_ID);
+      expect(trusted).to.be.false;
+      expect(stake).to.equal(0);
     });
   });
 });

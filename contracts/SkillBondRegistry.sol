@@ -7,10 +7,11 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 
-/// @title SkillBondRegistry — Economic Firewall for AI Agent Skills (v2)
+/// @title SkillBondRegistry — Economic Firewall for AI Agent Skills (v3)
 /// @notice Skills stake USDC to prove confidence. Malicious skills get slashed.
 ///         Whistleblowers earn 80% of the stake. Security becomes a market.
 ///         v2 adds: withdrawal flow, counter-stakes for flagging, time-based tiers.
+///         v3 adds: evidence hashes on flags, usage fees (x402-style), sponsorship bonds.
 contract SkillBondRegistry {
     IERC20 public immutable usdc;
     address public admin;
@@ -26,6 +27,10 @@ contract SkillBondRegistry {
     uint256 public constant TIER_BASIC = 25 * 10**6;       // 25 USDC
     uint256 public constant TIER_STANDARD = 500 * 10**6;    // 500 USDC
     uint256 public constant TIER_PREMIUM = 10000 * 10**6;   // 10,000 USDC
+
+    // v3: Usage fee constants
+    uint256 public constant QUERY_FEE = 50000; // 0.05 USDC (6 decimals)
+    uint256 public constant SKILL_OWNER_FEE_BPS = 7000; // 70%
 
     // Flag threshold for community slashing (decentralized)
     uint256 public flagThreshold;
@@ -55,8 +60,20 @@ contract SkillBondRegistry {
     uint256 public totalSlashed;
     uint256 public totalBountiesPaid;
 
+    // v3: Evidence hash mapping for flags
+    mapping(bytes32 => mapping(address => bytes32)) public flagEvidence;
+
+    // v3: Usage fee state
+    uint256 public totalFeesCollected;
+    mapping(bytes32 => uint256) public queryCount;
+    mapping(bytes32 => uint256) public skillFeesEarned;
+
+    // v3: Sponsorship state
+    mapping(bytes32 => mapping(address => uint256)) public sponsorStakes;
+    mapping(bytes32 => mapping(address => uint256)) public sponsoredAt;
+
     event SkillStaked(bytes32 indexed skillId, address indexed owner, uint256 amount, string metadataURI);
-    event SkillFlagged(bytes32 indexed skillId, address indexed flagger, uint256 flagCount, uint256 counterStake);
+    event SkillFlagged(bytes32 indexed skillId, address indexed flagger, uint256 flagCount, uint256 counterStake, bytes32 evidenceHash);
     event SkillSlashed(bytes32 indexed skillId, address indexed whistleblower, uint256 bounty, uint256 burned);
     event SkillWithdrawn(bytes32 indexed skillId, address indexed owner, uint256 amount);
     event SkillWithdrawalInitiated(bytes32 indexed skillId, address indexed owner, uint256 withdrawAt);
@@ -64,6 +81,12 @@ contract SkillBondRegistry {
     event FlagDismissed(bytes32 indexed skillId, address indexed flagger, uint256 counterStakeSlashed);
     event AdminTransferred(address indexed oldAdmin, address indexed newAdmin);
     event FlagThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
+
+    // v3: New events
+    event TrustQueried(bytes32 indexed skillId, address indexed querier, uint256 fee);
+    event FeesClaimedByOwner(bytes32 indexed skillId, address indexed owner, uint256 amount);
+    event SkillSponsored(bytes32 indexed skillId, address indexed sponsor, uint256 amount, uint256 newTotalStake);
+    event SponsorshipWithdrawn(bytes32 indexed skillId, address indexed sponsor, uint256 amount);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
@@ -105,7 +128,8 @@ contract SkillBondRegistry {
 
     /// @notice Flag a skill as potentially malicious. Requires 50% counter-stake.
     /// @param _skillId The skill to flag
-    function flagSkill(bytes32 _skillId) external {
+    /// @param _evidenceHash On-chain proof hash of what the flagger observed
+    function flagSkill(bytes32 _skillId, bytes32 _evidenceHash) external {
         SkillBond storage s = skills[_skillId];
         require(s.owner != address(0), "Skill not found");
         require(s.status == SkillStatus.ACTIVE || s.status == SkillStatus.WITHDRAWING, "Skill not active");
@@ -117,12 +141,13 @@ contract SkillBondRegistry {
 
         counterStakes[_skillId][msg.sender] = counterStake;
         hasFlagged[_skillId][msg.sender] = true;
+        flagEvidence[_skillId][msg.sender] = _evidenceHash;
         s.flagCount++;
         if (s.firstFlagger == address(0)) {
             s.firstFlagger = msg.sender;
         }
 
-        emit SkillFlagged(_skillId, msg.sender, s.flagCount, counterStake);
+        emit SkillFlagged(_skillId, msg.sender, s.flagCount, counterStake, _evidenceHash);
     }
 
     /// @notice Execute slash on a flagged skill. Admin verifies proof-of-malice off-chain.
@@ -278,6 +303,100 @@ contract SkillBondRegistry {
         counterStakes[_skillId][msg.sender] = 0;
 
         require(usdc.transfer(msg.sender, stake), "Counter-stake transfer failed");
+    }
+
+    // ---- v3: Usage Fee / Query Payment ----
+
+    /// @notice Paid trust query (x402-style). Charges 0.05 USDC, splits 70/30 owner/protocol.
+    /// @param _skillId The skill to query trust info for
+    /// @return tier The trust tier (0-3)
+    /// @return status The skill status
+    /// @return stake The current stake amount
+    /// @return age The time since the skill was staked
+    function queryTrust(bytes32 _skillId) external returns (uint256 tier, SkillStatus status, uint256 stake, uint256 age) {
+        SkillBond storage s = skills[_skillId];
+        require(s.owner != address(0), "Skill not found");
+
+        require(usdc.transferFrom(msg.sender, address(this), QUERY_FEE), "Fee transfer failed");
+
+        uint256 ownerShare = (QUERY_FEE * SKILL_OWNER_FEE_BPS) / 10000;
+        uint256 protocolShare = QUERY_FEE - ownerShare;
+
+        skillFeesEarned[_skillId] += ownerShare;
+        insuranceFund += protocolShare;
+        totalFeesCollected += QUERY_FEE;
+        queryCount[_skillId]++;
+
+        // Compute trust tier
+        status = s.status;
+        stake = s.stakeAmount;
+        age = block.timestamp - s.stakedAt;
+
+        if (s.owner == address(0) || s.status != SkillStatus.ACTIVE || s.stakeAmount == 0) {
+            tier = 0;
+        } else if (s.stakeAmount >= TIER_PREMIUM && age >= PREMIUM_MIN_AGE) {
+            tier = 3;
+        } else if (s.stakeAmount >= TIER_STANDARD && age >= STANDARD_MIN_AGE) {
+            tier = 2;
+        } else {
+            tier = 1;
+        }
+
+        emit TrustQueried(_skillId, msg.sender, QUERY_FEE);
+    }
+
+    /// @notice Skill owner claims accumulated query fees.
+    /// @param _skillId The skill to claim fees for
+    function claimFees(bytes32 _skillId) external {
+        SkillBond storage s = skills[_skillId];
+        require(msg.sender == s.owner, "Not skill owner");
+
+        uint256 amount = skillFeesEarned[_skillId];
+        require(amount > 0, "No fees to claim");
+
+        skillFeesEarned[_skillId] = 0;
+
+        require(usdc.transfer(msg.sender, amount), "Fee transfer failed");
+
+        emit FeesClaimedByOwner(_skillId, msg.sender, amount);
+    }
+
+    // ---- v3: Sponsorship Bonds ----
+
+    /// @notice Sponsor a skill by adding additional USDC stake. Increases tier potential.
+    /// @param _skillId The skill to sponsor
+    /// @param _amount Amount of USDC to sponsor (6 decimals)
+    function sponsorSkill(bytes32 _skillId, uint256 _amount) external {
+        require(_amount > 0, "Amount must be positive");
+        SkillBond storage s = skills[_skillId];
+        require(s.owner != address(0), "Skill not found");
+        require(s.status == SkillStatus.ACTIVE, "Skill not active");
+
+        require(usdc.transferFrom(msg.sender, address(this), _amount), "Sponsor transfer failed");
+
+        s.stakeAmount += _amount;
+        sponsorStakes[_skillId][msg.sender] += _amount;
+        sponsoredAt[_skillId][msg.sender] = block.timestamp;
+
+        emit SkillSponsored(_skillId, msg.sender, _amount, s.stakeAmount);
+    }
+
+    /// @notice Withdraw sponsorship stake. Requires ACTIVE skill and cooldown.
+    /// @param _skillId The skill to withdraw sponsorship from
+    function withdrawSponsorship(bytes32 _skillId) external {
+        SkillBond storage s = skills[_skillId];
+        require(s.status == SkillStatus.ACTIVE, "Skill not active");
+
+        uint256 amount = sponsorStakes[_skillId][msg.sender];
+        require(amount > 0, "No sponsorship stake");
+        require(block.timestamp >= sponsoredAt[_skillId][msg.sender] + COOLDOWN_PERIOD, "Cooldown active");
+
+        sponsorStakes[_skillId][msg.sender] = 0;
+        s.stakeAmount -= amount;
+
+        require(usdc.transfer(msg.sender, amount), "Sponsorship withdrawal failed");
+
+        emit SponsorshipWithdrawn(_skillId, msg.sender, amount);
     }
 
     // ---- View Functions ----
