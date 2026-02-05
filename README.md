@@ -279,7 +279,7 @@ The cold-start problem is real. Here is the specific wedge:
 ## Tests
 
 ```
-29/29 tests passing
+49/49 tests passing
 ```
 
 ## License
