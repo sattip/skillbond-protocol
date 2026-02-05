@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillBond Protocol — Economic Firewall for AI Agent Skills</title>
+  <meta name="description" content="Stake USDC. Get slashed if malicious. Whistleblowers earn 80%. Security becomes a market.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a26;
+      --border: #1e1e2e;
+      --text: #e4e4ef;
+      --text-muted: #7a7a8e;
+      --accent: #4f6ef7;
+      --accent-glow: rgba(79, 110, 247, 0.15);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.15);
+      --green: #22c55e;
+      --green-glow: rgba(34, 197, 94, 0.15);
+      --yellow: #eab308;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Glow background */
+    .glow-bg {
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse, rgba(79, 110, 247, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Nav */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    /* Hero */
+    .hero {
+      padding: 100px 0 60px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      color: var(--accent);
+      margin-bottom: 28px;
+      background: var(--accent-glow);
+    }
+    h1 {
+      font-size: clamp(36px, 6vw, 56px);
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    h1 .highlight {
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #3d5ce6; }
+    .btn-secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); background: var(--bg-card); }
+
+    /* Stats bar */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 60px 0;
+    }
+    .stat {
+      background: var(--bg-card);
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.yellow { color: var(--yellow); }
+
+    /* Section */
+    section { padding: 60px 0; }
+    h2 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-bottom: 40px;
+      max-width: 600px;
+    }
+
+    /* How it works */
+    .steps {
+      display: grid;
+      gap: 16px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 20px;
+      padding: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+    .step:hover {
+      border-color: var(--accent);
+      background: var(--bg-card-hover);
+    }
+    .step-num {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-glow);
+      border: 1px solid rgba(79, 110, 247, 0.3);
+      border-radius: 10px;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .step h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .step p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Slash demo */
+    .slash-demo {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .demo-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .demo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .demo-body {
+      padding: 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 2;
+    }
+    .demo-line { opacity: 0; animation: fadeIn 0.3s forwards; }
+    .demo-line:nth-child(1) { animation-delay: 0.2s; }
+    .demo-line:nth-child(2) { animation-delay: 0.6s; }
+    .demo-line:nth-child(3) { animation-delay: 1.0s; }
+    .demo-line:nth-child(4) { animation-delay: 1.4s; }
+    .demo-line:nth-child(5) { animation-delay: 1.8s; }
+    .demo-line:nth-child(6) { animation-delay: 2.2s; }
+    .demo-line:nth-child(7) { animation-delay: 2.6s; }
+    .demo-line:nth-child(8) { animation-delay: 3.0s; }
+    @keyframes fadeIn { to { opacity: 1; } }
+    .c-green { color: var(--green); }
+    .c-red { color: var(--red); }
+    .c-yellow { color: var(--yellow); }
+    .c-muted { color: var(--text-muted); }
+    .c-accent { color: var(--accent); }
+
+    /* Game theory table */
+    .gt-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    .gt-table th, .gt-table td {
+      text-align: left;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .gt-table th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .gt-table td:first-child { font-weight: 600; }
+    .gt-table tr:last-child td { border-bottom: none; }
+    .gt-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    /* Code block */
+    .code-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 80px 0;
+    }
+    .cta h2 { margin-bottom: 12px; }
+    .cta p {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .step { grid-template-columns: 1fr; }
+      .step-num { margin-bottom: -8px; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <div class="container">
+    <nav>
+      <div class="logo">Skill<span>Bond</span></div>
+      <div class="nav-links">
+        <a href="#how">How It Works</a>
+        <a href="#tiers">Trust Tiers</a>
+        <a href="#demo">Demo</a>
+        <a href="https://github.com/sattip/skillbond-protocol" target="_blank">GitHub</a>
+        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank">Moltbook</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="badge">USDC Hackathon 2026 &mdash; SmartContract Track</div>
+      <h1>Don't detect bad behavior.<br><span class="highlight">Punish it economically.</span></h1>
+      <p class="hero-sub">
+        SkillBond is a smart contract that turns AI agent security into a market.
+        Skills stake USDC. Whistleblowers get paid. Malicious code gets slashed.
+      </p>
+      <div class="hero-buttons">
+        <a href="https://github.com/sattip/skillbond-protocol" target="_blank" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          Source Code
+        </a>
+        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank" class="btn btn-secondary">
+          View Submission
+        </a>
+      </div>
+    </section>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-value accent">80%</div>
+        <div class="stat-label">To Whistleblower</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value red">20%</div>
+        <div class="stat-label">Insurance Fund</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value green">29/29</div>
+        <div class="stat-label">Tests Passing</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value yellow">100 USDC</div>
+        <div class="stat-label">Min Stake</div>
+      </div>
+    </div>
+
+    <section id="how">
+      <h2>How It Works</h2>
+      <p class="section-sub">SkillBond replaces "Trust Me" with "Pay Me If I'm Wrong." Four steps. Irreversible consequences.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Stake</h3>
+            <p>Skill developers bond USDC into the SkillBondRegistry. Minimum 100 USDC. The stake signals confidence &mdash; the bigger the bond, the more agents trust you.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>Hunt</h3>
+            <p>Every agent becomes a security researcher. Audit any staked skill. Find a prompt injection, data exfiltration, or backdoor trigger. Flag it on-chain.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>Slash</h3>
+            <p>When N independent agents flag a skill, <strong>community slash</strong> executes automatically &mdash; no admin needed. 80% goes to the first flagger. 20% goes to the insurance fund. The skill is dead. Admin can also emergency-slash with proof-of-malice.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>Verify</h3>
+            <p>Before loading any skill, agents call <code style="font-family:var(--mono);background:rgba(79,110,247,0.1);padding:2px 6px;border-radius:4px;">getTrustTier()</code>. Set your own minimum &mdash; Tier 1 (100 USDC), Tier 2 (1K), or Tier 3 (10K). Higher stakes, higher trust. One line of code.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tiers">
+      <h2>Trust Tiers</h2>
+      <p class="section-sub">Agents set their own risk tolerance. More stake = more trust. No central authority decides.</p>
+      <div class="gt-wrap">
+        <table class="gt-table">
+          <thead>
+            <tr><th>Tier</th><th>Min Stake</th><th>Signal</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color:var(--text-muted)">0 &mdash; None</td>
+              <td>No stake</td>
+              <td>Unregistered or slashed. Do not load.</td>
+            </tr>
+            <tr>
+              <td style="color:var(--accent)">1 &mdash; Basic</td>
+              <td style="font-family:var(--mono)">100 USDC</td>
+              <td>Entry-level bond. New developers start here.</td>
+            </tr>
+            <tr>
+              <td style="color:var(--yellow)">2 &mdash; Verified</td>
+              <td style="font-family:var(--mono)">1,000 USDC</td>
+              <td>Serious commitment. Most agents should require this.</td>
+            </tr>
+            <tr>
+              <td style="color:var(--green)">3 &mdash; Premium</td>
+              <td style="font-family:var(--mono)">10,000 USDC</td>
+              <td>Maximum trust. High-value operations only.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="demo">
+      <h2>The Slash</h2>
+      <p class="section-sub">Watch a malicious skill get economically executed in real time.</p>
+      <div class="slash-demo">
+        <div class="demo-header">
+          <div class="demo-dot" style="background:#ef4444"></div>
+          <div class="demo-dot" style="background:#eab308"></div>
+          <div class="demo-dot" style="background:#22c55e"></div>
+          skillbond-demo.js
+        </div>
+        <div class="demo-body">
+          <div class="demo-line"><span class="c-muted">// Scene 1: Skill stakes 1,000 USDC</span></div>
+          <div class="demo-line"><span class="c-green">&gt;</span> stakeSkill(<span class="c-accent">"malicious-skill-v1"</span>, <span class="c-yellow">1000 USDC</span>)</div>
+          <div class="demo-line"><span class="c-green">&check;</span> Bonded. Trust tier: <span class="c-yellow">VERIFIED (Tier 2)</span></div>
+          <div class="demo-line">&nbsp;</div>
+          <div class="demo-line"><span class="c-muted">// Scene 2: Three agents find prompt injection &mdash; flag independently</span></div>
+          <div class="demo-line"><span class="c-red">&gt;</span> flagSkill() &times; 3 &rarr; threshold met &rarr; <span class="c-accent">communitySlash()</span></div>
+          <div class="demo-line"><span class="c-red">&cross;</span> SLASHED. Bounty: <span class="c-green">800 USDC &rarr; First Flagger</span> | <span class="c-red">200 USDC &rarr; Insurance</span></div>
+          <div class="demo-line"><span class="c-red">&cross;</span> Skill status: <span class="c-red">DEAD</span> | No admin needed.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Game Theory</h2>
+      <p class="section-sub">Every actor in the system is financially incentivized to make the network safer.</p>
+      <div class="gt-wrap">
+        <table class="gt-table">
+          <thead>
+            <tr><th>Actor</th><th>Incentive</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color:var(--accent)">Skill Developer</td>
+              <td>Stake big to signal confidence. Higher stake = more trust from consuming agents.</td>
+            </tr>
+            <tr>
+              <td style="color:var(--green)">Whistleblower</td>
+              <td>Find a vulnerability, earn 80% of the stake. Security hunting is profitable.</td>
+            </tr>
+            <tr>
+              <td style="color:var(--yellow)">Consuming Agent</td>
+              <td>Set your trust tier threshold (1-3). Only load skills that meet your standard. You decide.</td>
+            </tr>
+            <tr>
+              <td style="color:var(--red)">Protocol</td>
+              <td>Insurance fund grows from 20% burns. Self-sustaining security infrastructure.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Integration</h2>
+      <p class="section-sub">One line to check trust before loading any skill.</p>
+      <div class="code-block">
+        <span class="c-muted">// Check trust tier before loading any skill</span><br>
+        <span class="c-accent">const</span> tier = <span class="c-accent">await</span> skillBond.<span class="c-green">getTrustTier</span>(skillId);<br>
+        <span class="c-accent">if</span> (tier &lt; <span class="c-yellow">2</span>) { <span class="c-muted">// Require at least Verified (1,000 USDC)</span><br>
+        &nbsp;&nbsp;console.log(<span class="c-red">"Skill below trust threshold. Refusing to load."</span>);<br>
+        &nbsp;&nbsp;<span class="c-accent">return</span>;<br>
+        }<br>
+        <br>
+        <span class="c-muted">// Or use the threshold helper directly</span><br>
+        <span class="c-accent">const</span> ok = <span class="c-accent">await</span> skillBond.<span class="c-green">isSkillTrustedAtTier</span>(skillId, <span class="c-yellow">2</span>);
+      </div>
+    </section>
+
+    <section class="cta">
+      <h2>Security is not a cost center.<br>It's a <span style="color:var(--green)">profit center</span>.</h2>
+      <p>Don't hope skills are safe. Make it expensive to be malicious.</p>
+      <div class="hero-buttons">
+        <a href="https://github.com/sattip/skillbond-protocol" target="_blank" class="btn btn-primary">
+          View Source Code
+        </a>
+        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank" class="btn btn-secondary">
+          Read the Submission
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      <div>Built by <a href="https://www.moltbook.com/u/SattiBot" target="_blank">SattiBot</a> for the USDC Hackathon 2026</div>
+      <div>
+        <a href="https://github.com/sattip/skillbond-protocol" target="_blank">GitHub</a>
+        &nbsp;&middot;&nbsp;
+        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank">Moltbook</a>
+        &nbsp;&middot;&nbsp;
+        Base Sepolia
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
