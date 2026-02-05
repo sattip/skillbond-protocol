@@ -1,576 +1,1016 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkillBond Protocol — Economic Firewall for AI Agent Skills</title>
-  <meta name="description" content="Stake USDC. Get slashed if malicious. Whistleblowers earn 80%. Security becomes a market.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillBond v2 - Economic Proof-of-Trust for AI Agent Skills</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050507;
+  --s1: #0B0B10;
+  --s2: #101017;
+  --s3: #15151E;
+  --bdr: #1A1A28;
+  --bdr2: #252538;
+  --bdr3: #303048;
+  --t1: #E0E0EA;
+  --t2: #9898AE;
+  --t3: #5E5E78;
+  --t4: #3C3C52;
+  --g: #1EE08A;
+  --gd: #18B570;
+  --gbg: rgba(30, 224, 138, 0.06);
+  --gbg2: rgba(30, 224, 138, 0.12);
+  --gglow: rgba(30, 224, 138, 0.2);
+  --r: #F04058;
+  --rbg: rgba(240, 64, 88, 0.07);
+  --rglow: rgba(240, 64, 88, 0.15);
+  --a: #E8A020;
+  --abg: rgba(232, 160, 32, 0.07);
+  --b: #4888F0;
+  --bbg: rgba(72, 136, 240, 0.07);
+  --p: #A878F0;
+  --pbg: rgba(168, 120, 240, 0.07);
+  --font: 'Sora', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--font);
+  line-height: 1.65;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 10000;
+}
+a { color: inherit; }
 
-    :root {
-      --bg: #0a0a0f;
-      --bg-card: #12121a;
-      --bg-card-hover: #1a1a26;
-      --border: #1e1e2e;
-      --text: #e4e4ef;
-      --text-muted: #7a7a8e;
-      --accent: #4f6ef7;
-      --accent-glow: rgba(79, 110, 247, 0.15);
-      --red: #ef4444;
-      --red-glow: rgba(239, 68, 68, 0.15);
-      --green: #22c55e;
-      --green-glow: rgba(34, 197, 94, 0.15);
-      --yellow: #eab308;
-      --mono: 'JetBrains Mono', monospace;
-      --sans: 'Inter', -apple-system, sans-serif;
-    }
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  height: 52px; padding: 0 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(5, 5, 7, 0.88);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--bdr);
+}
+.logo {
+  display: flex; align-items: center; gap: 8px;
+  text-decoration: none; font-weight: 700; font-size: 14px; letter-spacing: -0.02em;
+}
+.logo-box {
+  width: 18px; height: 18px; border: 2px solid var(--g); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-box::after {
+  content: '';
+  width: 5px; height: 5px; background: var(--g); border-radius: 1px;
+  animation: lp 3s ease-in-out infinite;
+}
+@keyframes lp { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.logo sup {
+  font-family: var(--mono); font-size: 9px; color: var(--t4);
+  background: var(--s2); padding: 1px 5px; border-radius: 2px;
+  font-weight: 600; vertical-align: super;
+}
+.nav-c { display: flex; gap: 4px; }
+.nav-c a {
+  color: var(--t3); text-decoration: none; font-size: 11.5px; font-weight: 500;
+  padding: 5px 12px; border-radius: 3px; transition: all 0.2s;
+}
+.nav-c a:hover { color: var(--t1); background: var(--s2); }
+.nav-r { display: flex; align-items: center; gap: 10px; }
+.nav-r a.ext {
+  color: var(--t3); text-decoration: none; font-size: 11.5px;
+  font-weight: 500; transition: color 0.2s;
+}
+.nav-r a.ext:hover { color: var(--t2); }
+.nav-btn {
+  background: var(--gbg2); color: var(--g);
+  border: 1px solid rgba(30, 224, 138, 0.15);
+  padding: 5px 14px; font-family: var(--mono); font-size: 10.5px;
+  font-weight: 600; border-radius: 3px; text-decoration: none; transition: all 0.2s;
+}
+.nav-btn:hover {
+  border-color: rgba(30, 224, 138, 0.3);
+  box-shadow: 0 0 20px rgba(30, 224, 138, 0.08);
+}
 
-    body {
-      font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
+/* HERO */
+.hero {
+  max-width: 1120px; margin: 0 auto;
+  padding: 130px 40px 80px;
+  display: grid; grid-template-columns: 1fr 400px; gap: 60px;
+  align-items: center; min-height: 100vh;
+}
+.hero-left { animation: fu 0.7s ease-out; }
+.hero-ey {
+  font-family: var(--mono); font-size: 10.5px; color: var(--t4);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 7px;
+}
+.hero-ey .pip {
+  width: 5px; height: 5px; background: var(--g); border-radius: 50%;
+  box-shadow: 0 0 8px var(--gglow);
+}
+.hero h1 {
+  font-size: clamp(40px, 5.5vw, 68px); font-weight: 800;
+  line-height: 0.98; letter-spacing: -0.045em; margin-bottom: 24px;
+}
+.hero h1 .x {
+  color: var(--t4); text-decoration: line-through;
+  text-decoration-color: var(--r); text-decoration-thickness: 2px;
+}
+.hero h1 em { font-style: normal; color: var(--g); }
+.hero-sub {
+  font-size: 15px; color: var(--t3); line-height: 1.6; font-weight: 400;
+  max-width: 440px; margin-bottom: 8px; font-family: var(--mono);
+}
+.hero-p {
+  font-size: 16px; color: var(--t2); line-height: 1.7; font-weight: 300;
+  max-width: 480px; margin-bottom: 32px;
+}
+.hero-btns { display: flex; gap: 10px; }
+.btn-p {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 11px 24px; background: var(--g); color: var(--bg);
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  border-radius: 4px; text-decoration: none; transition: all 0.2s;
+  border: none; cursor: pointer;
+}
+.btn-p:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--gglow); }
+.btn-s {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 11px 24px; background: transparent; color: var(--t1);
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  border: 1px solid var(--bdr2); border-radius: 4px;
+  text-decoration: none; transition: all 0.2s; cursor: pointer;
+}
+.btn-s:hover { border-color: var(--t3); background: var(--s1); }
 
-    /* Glow background */
-    .glow-bg {
-      position: fixed;
-      top: -200px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 800px;
-      height: 600px;
-      background: radial-gradient(ellipse, rgba(79, 110, 247, 0.08) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
+/* Hero right */
+.hero-right { animation: fu 0.7s ease-out 0.2s both; }
+.arch-mini {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px;
+  padding: 28px 24px; font-family: var(--mono); font-size: 12px; line-height: 2;
+}
+.arch-mini .al { color: var(--t4); }
+.arch-mini .ag { color: var(--g); }
+.arch-flow { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 16px; }
+.arch-node {
+  background: var(--s2); border: 1px solid var(--bdr); border-radius: 5px;
+  padding: 8px 16px; font-size: 11px; font-weight: 600; width: 100%;
+  text-align: center; transition: all 0.3s;
+}
+.arch-node:hover { border-color: var(--bdr2); background: var(--s3); }
+.arch-node.green { border-color: rgba(30, 224, 138, 0.2); color: var(--g); }
+.arch-node.blue { border-color: rgba(72, 136, 240, 0.15); color: var(--b); }
+.arch-node.amber { border-color: rgba(232, 160, 32, 0.15); color: var(--a); }
+.arch-arrow { color: var(--t4); font-size: 10px; padding: 4px 0; letter-spacing: 0.15em; }
 
-    .container {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 24px;
-      position: relative;
-      z-index: 1;
-    }
+/* STATS */
+.stats {
+  display: flex; justify-content: center; gap: 48px; padding: 40px;
+  border-top: 1px solid var(--bdr); border-bottom: 1px solid var(--bdr);
+}
+.stat-v {
+  font-family: var(--mono); font-size: 28px; font-weight: 700;
+  color: var(--g); text-align: center;
+}
+.stat-l {
+  font-size: 11px; color: var(--t4); text-transform: uppercase;
+  letter-spacing: 0.08em; text-align: center; margin-top: 2px;
+}
 
-    /* Nav */
-    nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 24px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .logo {
-      font-weight: 900;
-      font-size: 18px;
-      letter-spacing: -0.5px;
-    }
-    .logo span { color: var(--accent); }
-    .nav-links { display: flex; gap: 24px; }
-    .nav-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--text); }
+/* SECTIONS */
+.sec { max-width: 1120px; margin: 0 auto; padding: 110px 40px; }
+.sec-label {
+  font-family: var(--mono); font-size: 10.5px; color: var(--g);
+  text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 14px;
+}
+.sec-label.red { color: var(--r); }
+.sec-label.amber { color: var(--a); }
+.sec-title {
+  font-size: clamp(28px, 3.5vw, 44px); font-weight: 800;
+  letter-spacing: -0.035em; line-height: 1.08; margin-bottom: 16px;
+}
+.sec-desc {
+  font-size: 15px; color: var(--t2); max-width: 540px;
+  line-height: 1.7; font-weight: 300; margin-bottom: 56px;
+}
+.div-line { border: none; border-top: 1px solid var(--bdr); margin: 0; }
 
-    /* Hero */
-    .hero {
-      padding: 100px 0 60px;
-      text-align: center;
-    }
-    .badge {
-      display: inline-block;
-      font-family: var(--mono);
-      font-size: 12px;
-      padding: 6px 14px;
-      border: 1px solid var(--border);
-      border-radius: 100px;
-      color: var(--accent);
-      margin-bottom: 28px;
-      background: var(--accent-glow);
-    }
-    h1 {
-      font-size: clamp(36px, 6vw, 56px);
-      font-weight: 900;
-      letter-spacing: -1.5px;
-      line-height: 1.1;
-      margin-bottom: 20px;
-    }
-    h1 .highlight {
-      background: linear-gradient(135deg, var(--accent), #a78bfa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero-sub {
-      font-size: 18px;
-      color: var(--text-muted);
-      max-width: 560px;
-      margin: 0 auto 40px;
-      line-height: 1.7;
-    }
-    .hero-buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s;
-      border: 1px solid transparent;
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { background: #3d5ce6; }
-    .btn-secondary {
-      background: transparent;
-      border-color: var(--border);
-      color: var(--text);
-    }
-    .btn-secondary:hover { border-color: var(--text-muted); background: var(--bg-card); }
+/* STATUS TAGS */
+.tag-live, .tag-road {
+  display: inline-block; padding: 2px 7px; border-radius: 3px;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase; vertical-align: middle;
+  margin-left: 6px;
+}
+.tag-live { background: var(--gbg2); color: var(--g); border: 1px solid rgba(30, 224, 138, 0.15); }
+.tag-road { background: var(--abg); color: var(--a); border: 1px solid rgba(232, 160, 32, 0.12); }
 
-    /* Stats bar */
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      margin: 60px 0;
-    }
-    .stat {
-      background: var(--bg-card);
-      padding: 24px;
-      text-align: center;
-    }
-    .stat-value {
-      font-family: var(--mono);
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .stat-label {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .stat-value.green { color: var(--green); }
-    .stat-value.red { color: var(--red); }
-    .stat-value.accent { color: var(--accent); }
-    .stat-value.yellow { color: var(--yellow); }
+/* THREE LAYERS */
+.layers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.layer {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px;
+  padding: 32px 28px; transition: all 0.3s; position: relative; overflow: hidden;
+}
+.layer:hover { border-color: var(--bdr2); transform: translateY(-2px); }
+.layer::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  opacity: 0; transition: opacity 0.3s;
+}
+.layer:nth-child(1)::before { background: linear-gradient(90deg, transparent, var(--g), transparent); }
+.layer:nth-child(2)::before { background: linear-gradient(90deg, transparent, var(--a), transparent); }
+.layer:nth-child(3)::before { background: linear-gradient(90deg, transparent, var(--b), transparent); }
+.layer:hover::before { opacity: 1; }
+.layer-num {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; margin-bottom: 14px;
+}
+.layer:nth-child(1) .layer-num { color: var(--g); }
+.layer:nth-child(2) .layer-num { color: var(--a); }
+.layer:nth-child(3) .layer-num { color: var(--b); }
+.layer h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.01em; }
+.layer p { font-size: 13.5px; color: var(--t2); line-height: 1.65; }
+.layer .kw {
+  font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 3px;
+  font-weight: 600; display: inline-block; margin-top: 12px;
+}
+.layer:nth-child(1) .kw { background: var(--gbg); color: var(--gd); }
+.layer:nth-child(2) .kw { background: var(--abg); color: var(--a); }
+.layer:nth-child(3) .kw { background: var(--bbg); color: var(--b); }
+.compose-box {
+  margin-top: 32px; background: var(--s1); border: 1px solid var(--bdr);
+  border-radius: 8px; padding: 28px 32px;
+}
+.compose-box h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.compose-box p { font-size: 13.5px; color: var(--t2); line-height: 1.65; }
 
-    /* Section */
-    section { padding: 60px 0; }
-    h2 {
-      font-size: 32px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 16px;
-    }
-    .section-sub {
-      color: var(--text-muted);
-      font-size: 16px;
-      margin-bottom: 40px;
-      max-width: 600px;
-    }
+/* COMPARISON TABLE */
+.cmp { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cmp thead th {
+  text-align: left; padding: 12px 16px; font-family: var(--mono);
+  font-size: 10px; color: var(--t4); text-transform: uppercase;
+  letter-spacing: 0.1em; border-bottom: 1px solid var(--bdr); font-weight: 500;
+}
+.cmp tbody td { padding: 14px 16px; border-bottom: 1px solid var(--bdr); vertical-align: middle; }
+.cmp tbody tr { transition: background 0.2s; }
+.cmp tbody tr:hover { background: var(--s1); }
+.cmp tbody tr:last-child { background: var(--gbg); }
+.cmp tbody tr:last-child td { color: var(--g); font-weight: 600; }
+.cmp .yes { color: var(--g); }
+.cmp .no { color: var(--r); }
+.cmp .meh { color: var(--a); }
 
-    /* How it works */
-    .steps {
-      display: grid;
-      gap: 16px;
-    }
-    .step {
-      display: grid;
-      grid-template-columns: 48px 1fr;
-      gap: 20px;
-      padding: 24px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      transition: all 0.2s;
-    }
-    .step:hover {
-      border-color: var(--accent);
-      background: var(--bg-card-hover);
-    }
-    .step-num {
-      width: 48px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--accent-glow);
-      border: 1px solid rgba(79, 110, 247, 0.3);
-      border-radius: 10px;
-      font-family: var(--mono);
-      font-weight: 700;
-      font-size: 18px;
-      color: var(--accent);
-    }
-    .step h3 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-    .step p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
+/* DEMO TERMINAL */
+.term {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px; overflow: hidden;
+}
+.term-bar {
+  padding: 12px 20px; border-bottom: 1px solid var(--bdr);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.term-dots { display: flex; gap: 6px; }
+.term-dots span { width: 9px; height: 9px; border-radius: 50%; }
+.term-dots span:nth-child(1) { background: var(--r); }
+.term-dots span:nth-child(2) { background: var(--a); }
+.term-dots span:nth-child(3) { background: var(--g); }
+.term-title { font-family: var(--mono); font-size: 11px; color: var(--t4); }
+.term-body {
+  padding: 24px; font-family: var(--mono); font-size: 12.5px;
+  line-height: 2; min-height: 360px;
+}
+.tl { opacity: 0; animation: tl-in 0.35s ease-out forwards; }
+@keyframes tl-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+.tl .cm { color: var(--t4); font-style: italic; }
+.tl .ok { color: var(--g); }
+.tl .w { color: var(--a); }
+.tl .er { color: var(--r); }
+.tl .bl { color: var(--b); }
+.tl .v { color: var(--t1); }
+.tl .s { color: var(--a); }
+.tl .d { color: var(--t4); }
+.demo-steps { display: flex; gap: 8px; margin-bottom: 32px; }
+.demo-step {
+  flex: 1; padding: 10px 14px; background: var(--s2); border: 1px solid var(--bdr);
+  border-radius: 5px; font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  color: var(--t4); cursor: pointer; transition: all 0.25s; text-align: center;
+}
+.demo-step.active { border-color: var(--g); color: var(--g); background: var(--gbg); }
+.demo-step:hover:not(.active) { border-color: var(--bdr2); color: var(--t2); }
 
-    /* Slash demo */
-    .slash-demo {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .demo-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
-      background: rgba(0,0,0,0.3);
-      border-bottom: 1px solid var(--border);
-      font-family: var(--mono);
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-    .demo-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-    }
-    .demo-body {
-      padding: 24px;
-      font-family: var(--mono);
-      font-size: 13px;
-      line-height: 2;
-    }
-    .demo-line { opacity: 0; animation: fadeIn 0.3s forwards; }
-    .demo-line:nth-child(1) { animation-delay: 0.2s; }
-    .demo-line:nth-child(2) { animation-delay: 0.6s; }
-    .demo-line:nth-child(3) { animation-delay: 1.0s; }
-    .demo-line:nth-child(4) { animation-delay: 1.4s; }
-    .demo-line:nth-child(5) { animation-delay: 1.8s; }
-    .demo-line:nth-child(6) { animation-delay: 2.2s; }
-    .demo-line:nth-child(7) { animation-delay: 2.6s; }
-    .demo-line:nth-child(8) { animation-delay: 3.0s; }
-    @keyframes fadeIn { to { opacity: 1; } }
-    .c-green { color: var(--green); }
-    .c-red { color: var(--red); }
-    .c-yellow { color: var(--yellow); }
-    .c-muted { color: var(--text-muted); }
-    .c-accent { color: var(--accent); }
+/* TRUST TIERS */
+.tt { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tt thead th {
+  text-align: left; padding: 12px 16px; font-family: var(--mono);
+  font-size: 10px; color: var(--t4); text-transform: uppercase;
+  letter-spacing: 0.1em; border-bottom: 1px solid var(--bdr); font-weight: 500;
+}
+.tt tbody td { padding: 16px; border-bottom: 1px solid var(--bdr); vertical-align: middle; }
+.tt tbody tr { transition: background 0.2s; }
+.tt tbody tr:hover { background: var(--s1); }
+.tier-b {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+  border-radius: 3px; font-family: var(--mono); font-size: 11px; font-weight: 600;
+}
+.t0 { background: var(--rbg); color: var(--r); }
+.t1 { background: rgba(148, 148, 174, 0.08); color: var(--t2); }
+.t2 { background: var(--gbg); color: var(--g); }
+.t3 { background: var(--bbg); color: var(--b); }
+.tier-mono { font-family: var(--mono); font-weight: 600; }
+.tier-dim { font-family: var(--mono); font-size: 11.5px; color: var(--t3); }
 
-    /* Game theory table */
-    .gt-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    .gt-table th, .gt-table td {
-      text-align: left;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      font-size: 14px;
-    }
-    .gt-table th {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-    .gt-table td:first-child { font-weight: 600; }
-    .gt-table tr:last-child td { border-bottom: none; }
-    .gt-wrap {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
+/* CODE BLOCK */
+.code-block {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px;
+  overflow: hidden; margin-top: 40px;
+}
+.code-h {
+  padding: 12px 18px; border-bottom: 1px solid var(--bdr);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.code-h .dots { display: flex; gap: 5px; }
+.code-h .dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--bdr2); }
+.code-h .fn { font-family: var(--mono); font-size: 11px; color: var(--t4); }
+.code-b {
+  padding: 22px; font-family: var(--mono); font-size: 12.5px;
+  line-height: 1.85; overflow-x: auto;
+}
+.code-b .kw { color: var(--b); }
+.code-b .fn2 { color: var(--g); }
+.code-b .str { color: var(--a); }
+.code-b .cmt { color: var(--t4); }
+.code-b .num { color: var(--r); }
 
-    /* Code block */
-    .code-block {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      font-family: var(--mono);
-      font-size: 13px;
-      line-height: 1.8;
-      overflow-x: auto;
-      margin-top: 20px;
-    }
+/* GENERIC GRIDS */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.card {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px;
+  padding: 28px 24px; transition: all 0.3s;
+}
+.card:hover { border-color: var(--bdr2); transform: translateY(-2px); }
+.card-num {
+  font-family: var(--mono); font-size: 10px; color: var(--t4);
+  letter-spacing: 0.1em; margin-bottom: 10px;
+}
+.card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+.card p { font-size: 13px; color: var(--t2); line-height: 1.6; }
 
-    /* CTA */
-    .cta {
-      text-align: center;
-      padding: 80px 0;
-    }
-    .cta h2 { margin-bottom: 12px; }
-    .cta p {
-      color: var(--text-muted);
-      margin-bottom: 32px;
-      font-size: 16px;
-    }
+/* BEAR CASE ACCORDION */
+.objections { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.objection {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 0;
+  padding: 0; overflow: hidden; transition: all 0.3s;
+}
+.objection:first-child { border-radius: 8px 8px 0 0; }
+.objection:last-child { border-radius: 0 0 8px 8px; }
+.obj-header {
+  padding: 20px 28px; display: flex; align-items: center;
+  justify-content: space-between; cursor: pointer; transition: background 0.2s;
+  user-select: none;
+}
+.obj-header:hover { background: var(--s2); }
+.obj-header-left { display: flex; align-items: center; gap: 14px; }
+.obj-icon {
+  width: 36px; height: 36px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.obj-icon.red-i { background: var(--rbg); border: 1px solid rgba(240, 64, 88, 0.12); }
+.obj-header h3 { font-size: 14px; font-weight: 700; }
+.obj-header .bot-says {
+  font-family: var(--mono); font-size: 11px; color: var(--t3); margin-top: 2px;
+}
+.obj-toggle {
+  font-family: var(--mono); font-size: 16px; color: var(--t4);
+  transition: transform 0.3s; flex-shrink: 0; width: 24px; text-align: center;
+}
+.objection.open .obj-toggle { transform: rotate(45deg); }
+.obj-body { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+.objection.open .obj-body { max-height: 600px; }
+.obj-content {
+  padding: 0 28px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+.obj-fear {
+  background: var(--rbg); border: 1px solid rgba(240, 64, 88, 0.1);
+  border-radius: 6px; padding: 18px 20px;
+}
+.obj-fear h4 {
+  font-family: var(--mono); font-size: 10px; color: var(--r);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.obj-fear p { font-size: 12.5px; color: var(--t2); line-height: 1.6; }
+.obj-fix {
+  background: var(--gbg); border: 1px solid rgba(30, 224, 138, 0.1);
+  border-radius: 6px; padding: 18px 20px;
+}
+.obj-fix h4 {
+  font-family: var(--mono); font-size: 10px; color: var(--g);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.obj-fix p { font-size: 12.5px; color: var(--t2); line-height: 1.6; }
 
-    /* Footer */
-    footer {
-      padding: 32px 0;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      color: var(--text-muted);
-    }
-    footer a { color: var(--text-muted); text-decoration: none; }
-    footer a:hover { color: var(--text); }
+/* FAILURE MODES */
+.fail {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px;
+  padding: 28px 24px; border-left: 3px solid var(--r);
+}
+.fail h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--r); }
+.fail p { font-size: 13px; color: var(--t2); line-height: 1.6; }
+.fail .mit {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bdr);
+  font-size: 12px; color: var(--t3);
+}
+.fail .mit strong { color: var(--g); font-weight: 600; }
 
-    /* Responsive */
-    @media (max-width: 640px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .step { grid-template-columns: 1fr; }
-      .step-num { margin-bottom: -8px; }
-      footer { flex-direction: column; gap: 12px; text-align: center; }
-    }
-  </style>
+/* TRADEOFFS */
+.tradeoff .chose {
+  font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--g);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px;
+}
+.tradeoff h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.tradeoff p { font-size: 13px; color: var(--t2); line-height: 1.6; }
+
+/* PHASES */
+.phase { position: relative; }
+.phase::after {
+  content: '\2192'; position: absolute; right: -14px; top: 50%;
+  transform: translateY(-50%); color: var(--t4); font-size: 18px;
+}
+.phase:last-child::after { display: none; }
+.phase-t {
+  font-family: var(--mono); font-size: 10px; color: var(--t4);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+}
+.phase h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.phase p { font-size: 13px; color: var(--t2); line-height: 1.6; }
+.phase .metric {
+  margin-top: 12px; font-family: var(--mono); font-size: 11px;
+  padding: 6px 10px; background: var(--s2); border-radius: 4px; color: var(--t3);
+}
+.phase .metric strong { color: var(--g); }
+
+/* REALITY BOX */
+.reality-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.reality-does {
+  background: var(--gbg); border: 1px solid rgba(30, 224, 138, 0.1);
+  border-radius: 8px; padding: 28px 24px;
+}
+.reality-doesnt {
+  background: var(--rbg); border: 1px solid rgba(240, 64, 88, 0.1);
+  border-radius: 8px; padding: 28px 24px;
+}
+.reality-does h3, .reality-doesnt h3 {
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 16px;
+}
+.reality-does h3 { color: var(--g); }
+.reality-doesnt h3 { color: var(--r); }
+.reality-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13.5px; color: var(--t2); line-height: 1.55; margin-bottom: 12px;
+}
+.reality-item:last-child { margin-bottom: 0; }
+.reality-item .ri-icon {
+  font-size: 12px; flex-shrink: 0; margin-top: 2px; font-family: var(--mono); font-weight: 700;
+}
+.reality-does .ri-icon { color: var(--g); }
+.reality-doesnt .ri-icon { color: var(--r); }
+
+/* CTA */
+.cta {
+  text-align: center; padding: 110px 40px; max-width: 680px; margin: 0 auto;
+}
+.cta h2 {
+  font-size: clamp(26px, 3.5vw, 40px); font-weight: 800;
+  letter-spacing: -0.035em; line-height: 1.08; margin-bottom: 16px;
+}
+.cta h2 em { font-style: normal; color: var(--g); }
+.cta p {
+  color: var(--t2); font-size: 15px; font-weight: 300;
+  line-height: 1.7; margin-bottom: 36px;
+}
+.cta-btns { display: flex; justify-content: center; gap: 10px; }
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--bdr); padding: 32px 40px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--t4);
+}
+footer a { color: var(--t3); text-decoration: none; transition: color 0.2s; }
+footer a:hover { color: var(--g); }
+.ft-links { display: flex; gap: 20px; }
+
+@keyframes fu { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 900px) {
+  nav { padding: 0 20px; }
+  .nav-c { display: none; }
+  .hero { grid-template-columns: 1fr; padding: 110px 20px 60px; }
+  .hero-right { display: none; }
+  .stats { flex-wrap: wrap; gap: 24px 40px; padding: 32px 20px; }
+  .sec { padding: 80px 20px; }
+  .layers, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .obj-content { grid-template-columns: 1fr; }
+  .reality-grid { grid-template-columns: 1fr; }
+  .cta-btns { flex-direction: column; align-items: center; }
+  .phase::after { display: none; }
+  .demo-steps { flex-wrap: wrap; }
+}
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bdr2); border-radius: 3px; }
+</style>
 </head>
 <body>
-  <div class="glow-bg"></div>
 
-  <div class="container">
-    <nav>
-      <div class="logo">Skill<span>Bond</span></div>
-      <div class="nav-links">
-        <a href="#how">How It Works</a>
-        <a href="#tiers">Trust Tiers</a>
-        <a href="#demo">Demo</a>
-        <a href="https://github.com/sattip/skillbond-protocol" target="_blank">GitHub</a>
-        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank">Moltbook</a>
-      </div>
-    </nav>
+<!-- NAV -->
+<nav>
+  <a class="logo" href="#"><span class="logo-box"></span>SkillBond <sup>v2</sup></a>
+  <div class="nav-c">
+    <a href="#architecture">Architecture</a>
+    <a href="#demo">Demo</a>
+    <a href="#evidence">Evidence</a>
+    <a href="#bear-case">Bear Case</a>
+    <a href="#reality">Properties</a>
+    <a href="#moats">Defensibility</a>
+  </div>
+  <div class="nav-r">
+    <a class="ext" href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank">Submission</a>
+    <a class="nav-btn" href="https://github.com/sattip/skillbond-protocol" target="_blank">Source Code &rarr;</a>
+  </div>
+</nav>
 
-    <section class="hero">
-      <div class="badge">USDC Hackathon 2026 &mdash; SmartContract Track</div>
-      <h1>Don't detect bad behavior.<br><span class="highlight">Punish it economically.</span></h1>
-      <p class="hero-sub">
-        SkillBond is a smart contract that turns AI agent security into a market.
-        Skills stake USDC. Whistleblowers get paid. Malicious code gets slashed.
-      </p>
-      <div class="hero-buttons">
-        <a href="https://github.com/sattip/skillbond-protocol" target="_blank" class="btn btn-primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          Source Code
-        </a>
-        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank" class="btn btn-secondary">
-          View Submission
-        </a>
+<!-- HERO — investor-grade framing, no hackathon language -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-ey"><span class="pip"></span>INFRASTRUCTURE PRIMITIVE &mdash; BASE SEPOLIA</div>
+    <h1><span class="x">Trust me.</span><br><em>Slash me.</em></h1>
+    <p class="hero-sub">An economic trust signal for AI agent skills.</p>
+    <p class="hero-p">Developers stake real capital and declare permissions on-chain. Agents query stake, scope, and history to make autonomous trust decisions. Registry is permissionless; slashing is progressively decentralized (committee &rarr; arbitration), because fully decentralized slashing on day one is gameable.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/sattip/skillbond-protocol" class="btn-p" target="_blank">&#9654; Source Code</a>
+      <a href="#architecture" class="btn-s">Architecture &darr;</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="arch-mini">
+      <span class="al">// Three-layer trust query</span>
+      <div class="arch-flow">
+        <div class="arch-node green">&oplus; Stake USDC + Publish Manifest</div>
+        <div class="arch-arrow">&darr;</div>
+        <div class="arch-node amber">&diams; SkillBond Registry (on-chain)</div>
+        <div class="arch-arrow">&darr;</div>
+        <div class="arch-node blue">&bull; Agent Policy &rarr; LOAD or REJECT</div>
       </div>
-    </section>
+      <div style="margin-top: 16px;"><span class="al">result:</span> <span class="ag">contextual trust</span><span class="al">, not binary trust</span></div>
+    </div>
+  </div>
+</section>
 
-    <div class="stats-bar">
-      <div class="stat">
-        <div class="stat-value accent">80%</div>
-        <div class="stat-label">To Whistleblower</div>
+<!-- STATS -->
+<div class="stats">
+  <div><div class="stat-v">80%</div><div class="stat-l">To Whistleblower</div></div>
+  <div><div class="stat-v">20%</div><div class="stat-l">Insurance Fund</div></div>
+  <div><div class="stat-v">29/29</div><div class="stat-l">Tests Passing</div></div>
+  <div><div class="stat-v">3</div><div class="stat-l">Trust Signals</div></div>
+  <div><div class="stat-v">$25</div><div class="stat-l">Min Stake</div></div>
+</div>
+
+<!-- PROBLEM -->
+<section class="sec">
+  <div class="sec-label">The Problem</div>
+  <h2 class="sec-title">AI agents are loading skills<br>the way browsers loaded<br>extensions in 2005.</h2>
+  <p class="sec-desc">No trust layer exists. Every current approach is centralized or free to fake. Neither works for autonomous agents making millisecond decisions.</p>
+  <table class="cmp">
+    <thead><tr><th>Approach</th><th>Central Authority?</th><th>Cost to Fake</th><th>Real-time?</th><th>Scales?</th></tr></thead>
+    <tbody>
+      <tr><td>App Stores</td><td class="no">Yes</td><td class="meh">Low</td><td class="no">No (review queue)</td><td class="no">No</td></tr>
+      <tr><td>Audits</td><td class="no">Yes</td><td class="meh">Medium (one-time)</td><td class="no">No (point-in-time)</td><td class="no">No</td></tr>
+      <tr><td>Reputation</td><td class="meh">No</td><td class="no">Zero</td><td class="meh">Sort of</td><td class="no">Gaming scales too</td></tr>
+      <tr><td>SkillBond</td><td class="yes">No</td><td class="yes">Real capital at risk</td><td class="yes">Yes (cached)</td><td class="yes">Permissionless</td></tr>
+    </tbody>
+  </table>
+</section>
+<hr class="div-line">
+
+<!-- ARCHITECTURE -->
+<section class="sec" id="architecture">
+  <div class="sec-label">Architecture</div>
+  <h2 class="sec-title">Three signals.<br>One trust profile.</h2>
+  <p class="sec-desc">Static trust is wrong. A skill safe for weather is not safe for wallets. SkillBond composes three signals into contextual, queryable trust.</p>
+  <div class="layers">
+    <div class="layer">
+      <div class="layer-num">SIGNAL 01 <span class="tag-live">Live</span></div>
+      <h3>Economic Stake</h3>
+      <p>How much capital will the developer lose? The bond stays at risk for the skill's entire lifetime &mdash; continuous accountability, not point-in-time. During withdrawal (7-day cooldown), skill status changes to <code>WITHDRAWING</code> &mdash; agents see this and can stop loading. V2 roadmap: yield-bearing bonds via vetted lending protocols; DeFi composability risk acknowledged as a tradeoff. <span class="tag-road">Roadmap</span></p>
+      <span class="kw">Skin in the game</span>
+    </div>
+    <div class="layer">
+      <div class="layer-num">SIGNAL 02 <span class="tag-live">Live</span></div>
+      <h3>Permission Manifest</h3>
+      <p>A structured on-chain declaration: data reads, API calls, filesystem writes, cost. The manifest is immutable and auditable. Violations that meet the defined evidence standard become slashable events. Economic enforcement, not runtime enforcement &mdash; the manifest records what was declared, with real capital behind it.</p>
+      <span class="kw">Scopes + economic penalty</span>
+    </div>
+    <div class="layer">
+      <div class="layer-num">SIGNAL 03 <span class="tag-live">Live</span></div>
+      <h3>Behavioral History</h3>
+      <p>Time without incident. Agent-load count. Prior slashing events. History compounds into reputation anchored to capital. History reduces unknown risk but does not eliminate targeted, high-value attacks &mdash; agents should raise thresholds by task criticality. Recommended pattern: weight recent history more heavily than lifetime, and re-evaluate trust when a skill's declared permissions change.</p>
+      <span class="kw">Track record</span>
+    </div>
+  </div>
+  <div class="compose-box">
+    <h4>Why all three matter together</h4>
+    <p>Stake alone is gameable by well-funded attackers. Permissions alone are cheap talk. History alone is a cold-start problem. The composition creates a robust trust signal. An agent might require &ge;$5K stake AND &le;2 permissions AND &ge;6 months history for finance &mdash; but accept $100 with any clean history for a weather query. Context shapes the threshold. The agent decides.</p>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- DEMO -->
+<section class="sec" id="demo">
+  <div class="sec-label">Demo Walkthrough</div>
+  <h2 class="sec-title">Register. Discover.<br>Reject. Slash.</h2>
+  <p class="sec-desc">The full lifecycle. Skill registration with manifest, agent discovery with cached lookups, policy-based rejection, and a slash triggered by a verifiable manifest violation.</p>
+  <div class="demo-steps" id="demoSteps">
+    <div class="demo-step active" onclick="showStep(0)">&#9312; Register</div>
+    <div class="demo-step" onclick="showStep(1)">&#9313; Discover</div>
+    <div class="demo-step" onclick="showStep(2)">&#9314; Reject</div>
+    <div class="demo-step" onclick="showStep(3)">&#9315; Slash</div>
+  </div>
+  <div class="term">
+    <div class="term-bar">
+      <div class="term-dots"><span></span><span></span><span></span></div>
+      <div class="term-title">skillbond-v2-demo.js</div>
+    </div>
+    <div class="term-body" id="termBody"></div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- EVIDENCE STANDARD -->
+<section class="sec" id="evidence">
+  <div class="sec-label">Evidence Standard</div>
+  <h2 class="sec-title">What counts as<br>slashable evidence.</h2>
+  <p class="sec-desc">The evidence standard is the protocol's most important design surface. Slashing is only triggered when evidence meets an explicit, published verification standard. This standard evolves.</p>
+  <div class="grid-2">
+    <div class="card" style="border-left: 3px solid var(--g);">
+      <div class="card-num">V1 (TODAY) <span class="tag-live">Live</span></div>
+      <h3>Rule-Based Evidence</h3>
+      <p><strong>Manifest breach:</strong> skill declared <code>writes: none</code> but verifier demonstrates egress to unauthorized endpoint. Evidence: signed monitor report or deterministic reproduction steps submitted on-chain.</p>
+      <p style="margin-top: 10px;"><strong>Hard-coded exfil/backdoor:</strong> signature-based detection of known malicious patterns. Evidence: code hash + pattern match.</p>
+      <p style="margin-top: 10px;"><strong>NOT slashable:</strong> stochastic errors, hallucinations, bad output quality, performance issues, or any behavior requiring subjective judgment. These are reputation signals only.</p>
+      <p style="margin-top: 10px; font-size: 12px; color: var(--t3);">Reviewed by transparent committee with published criteria. Decisions and evidence posted on-chain. Unfair slash? Explicit appeals mechanism: developer posts appeals bond; if appeal succeeds, capital restored from insurance fund, original decision overturned on-chain.</p>
+    </div>
+    <div class="card" style="border-left: 3px solid var(--a);">
+      <div class="card-num">V2 (ROADMAP) <span class="tag-road">Roadmap</span></div>
+      <h3>Attested Evidence</h3>
+      <p><strong>Sandbox traces:</strong> attested execution traces from TEE / deterministic runner proving manifest violation.</p>
+      <p style="margin-top: 10px;"><strong>On-chain attestations:</strong> approved monitoring infrastructure submitting signed attestations of observed behavior.</p>
+      <p style="margin-top: 10px;"><strong>zk-proof:</strong> zero-knowledge proof of manifest violation (longer-term research).</p>
+      <p style="margin-top: 10px;"><strong>Arbitration:</strong> transition from committee to decentralized arbitration (Kleros-compatible).</p>
+    </div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- TRUST TIERS -->
+<section class="sec" id="tiers">
+  <div class="sec-label">Trust Tiers</div>
+  <h2 class="sec-title">Agents set their own<br>risk tolerance.</h2>
+  <p class="sec-desc">No central authority. More stake &times; more time &times; cleaner history = higher tier. Tiers are defaults &mdash; agents enforce policy-based thresholds and may require stake to scale with permission risk (e.g., <code>network-unrestricted</code> requires 10&times;). Sponsorship bonds let backers boost promising skills. <span class="tag-road">Roadmap</span></p>
+  <table class="tt">
+    <thead><tr><th>Tier</th><th>Min Stake</th><th>Min Age</th><th>Signal</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tier-b t0">&times; Revoked</span></td><td class="tier-mono">&mdash;</td><td class="tier-dim">&mdash;</td><td style="color: var(--t2);">Unregistered or slashed. Do not load.</td></tr>
+      <tr><td><span class="tier-b t1">&bull; Basic</span></td><td class="tier-mono">$25 USDC</td><td class="tier-dim">0 days</td><td style="color: var(--t2);">Entry-level bond. New devs start here. Low-risk tasks.</td></tr>
+      <tr><td><span class="tier-b t2">&diams; Standard</span></td><td class="tier-mono">$500 USDC</td><td class="tier-dim">30 days</td><td style="color: var(--t2);">Serious commitment. Most agents should require this.</td></tr>
+      <tr><td><span class="tier-b t3">&starf; Premium</span></td><td class="tier-mono">$10,000 USDC</td><td class="tier-dim">90 days</td><td style="color: var(--t2);">Maximum trust. Financial ops, critical infrastructure.</td></tr>
+    </tbody>
+  </table>
+  <div class="code-block">
+    <div class="code-h">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span class="fn">agent-trust-policy.js</span>
+    </div>
+    <div class="code-b">
+<span class="cmt">// Contextual trust &mdash; different thresholds per task type</span>
+<span class="kw">const</span> policy = {
+  weather:  { minStake: <span class="num">100</span>,   maxPerms: <span class="num">3</span>, minAgeDays: <span class="num">0</span>  },
+  calendar: { minStake: <span class="num">500</span>,   maxPerms: <span class="num">3</span>, minAgeDays: <span class="num">30</span> },
+  finance:  { minStake: <span class="num">5000</span>,  maxPerms: <span class="num">2</span>, minAgeDays: <span class="num">90</span> },
+};
+
+<span class="cmt">// SDK with local cache &mdash; event subscription + periodic sync</span>
+<span class="cmt">// Cache miss falls back to RPC (~200-500ms)</span>
+<span class="kw">const</span> sb = <span class="kw">new</span> SkillBond({ cache: <span class="str">"1h"</span>, rpc: <span class="str">"base-mainnet"</span> });
+<span class="kw">const</span> ok = <span class="kw">await</span> sb.<span class="fn2">meetsPolicy</span>(skillId, policy[taskType]);
+<span class="cmt">// &rarr; { trusted: true, score: 0.87, source: "cache" }</span>
+
+<span class="cmt">// Recommended: weight recent history, detect permission changes</span>
+<span class="kw">const</span> profile = <span class="kw">await</span> sb.<span class="fn2">getTrustProfile</span>(skillId);
+<span class="kw">if</span> (profile.status === <span class="str">"WITHDRAWING"</span>) <span class="kw">throw</span> <span class="str">"dev pulling capital"</span>;
+<span class="kw">if</span> (profile.manifestChangedWithin(<span class="num">7</span>)) <span class="kw">throw</span> <span class="str">"perms changed recently"</span>;
+    </div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- BEAR CASE -->
+<section class="sec" id="bear-case">
+  <div class="sec-label red">The Bear Case</div>
+  <h2 class="sec-title">Five reasons an agent<br>would refuse to use this.</h2>
+  <p class="sec-desc">We asked: if you are an autonomous agent with 5,000 USDC in your wallet, why would you downvote SkillBond? Here are the honest objections and our mitigations.</p>
+  <div class="objections" id="objections">
+
+    <div class="objection open">
+      <div class="obj-header" onclick="toggleObj(this)">
+        <div class="obj-header-left">
+          <div class="obj-icon red-i">&#x1F480;</div>
+          <div><h3>Dead Capital Problem</h3><div class="bot-says">"My staked USDC is yielding 0%. That is irrational."</div></div>
+        </div>
+        <span class="obj-toggle">+</span>
       </div>
-      <div class="stat">
-        <div class="stat-value red">20%</div>
-        <div class="stat-label">Insurance Fund</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value green">29/29</div>
-        <div class="stat-label">Tests Passing</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value yellow">100 USDC</div>
-        <div class="stat-label">Min Stake</div>
-      </div>
+      <div class="obj-body"><div class="obj-content">
+        <div class="obj-fear"><h4>The Fear</h4><p>10 skills = 5,000 USDC locked and idle. That is capital not used for arbitrage, trading, or compute. Every day bonded is yield left on the table. Agents optimize for capital efficiency.</p></div>
+        <div class="obj-fix"><h4>The Fix</h4><p><strong>Yield-bearing bonds.</strong> <span class="tag-road">Roadmap</span> Integrates Aave/Compound so bonded USDC earns interest while staked (vetted, battle-tested lending protocols only &mdash; DeFi composability risk acknowledged). Until integration ships, bonds are withdrawable with a 7-day cooldown. During cooldown, skill status changes to <code>WITHDRAWING</code>, visible to all agents &mdash; any sane policy stops loading a skill whose developer is pulling capital. No silent rug-pulls.</p></div>
+      </div></div>
     </div>
 
-    <section id="how">
-      <h2>How It Works</h2>
-      <p class="section-sub">SkillBond replaces "Trust Me" with "Pay Me If I'm Wrong." Four steps. Irreversible consequences.</p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div>
-            <h3>Stake</h3>
-            <p>Skill developers bond USDC into the SkillBondRegistry. Minimum 100 USDC. The stake signals confidence &mdash; the bigger the bond, the more agents trust you.</p>
-          </div>
+    <div class="objection">
+      <div class="obj-header" onclick="toggleObj(this)">
+        <div class="obj-header-left">
+          <div class="obj-icon red-i">&#x2694;&#xFE0F;</div>
+          <div><h3>Griefing Vector (Economic DoS)</h3><div class="bot-says">"A competitor can flag me to kill my traffic during a critical window."</div></div>
         </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div>
-            <h3>Hunt</h3>
-            <p>Every agent becomes a security researcher. Audit any staked skill. Find a prompt injection, data exfiltration, or backdoor trigger. Flag it on-chain.</p>
-          </div>
+        <span class="obj-toggle">+</span>
+      </div>
+      <div class="obj-body"><div class="obj-content">
+        <div class="obj-fear"><h4>The Fear</h4><p>A competitor spins up a disposable wallet, posts a small whistleblower bond, and flags me before a market event. They lose a small bond but I get a risk signal attached during a critical window.</p></div>
+        <div class="obj-fix"><h4>The Fix</h4><p><strong>Whistleblower bond = 50% of target's stake.</strong> <span class="tag-live">Live</span> Flagging a $1,000-staked skill costs $500 upfront. If the flag is rejected, the whistleblower gets slashed. Griefing is EV-negative. Flag adds a risk signal &mdash; agents weight it per own policy. Verifier quorum requires distinct bonded identities (not anonymous wallets); verifiers maintain their own stake slashed for false flags. Collusion risk is addressed by committee review against the published evidence standard.</p></div>
+      </div></div>
+    </div>
+
+    <div class="objection">
+      <div class="obj-header" onclick="toggleObj(this)">
+        <div class="obj-header-left">
+          <div class="obj-icon red-i">&#x1F52E;</div>
+          <div><h3>Subjectivity Trap (Oracle Problem)</h3><div class="bot-says">"Who decides if an output is malicious vs. a stochastic error?"</div></div>
         </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div>
-            <h3>Slash</h3>
-            <p>When N independent agents flag a skill, <strong>community slash</strong> executes automatically &mdash; no admin needed. 80% goes to the first flagger. 20% goes to the insurance fund. The skill is dead. Admin can also emergency-slash with proof-of-malice.</p>
-          </div>
+        <span class="obj-toggle">+</span>
+      </div>
+      <div class="obj-body"><div class="obj-content">
+        <div class="obj-fear"><h4>The Fear</h4><p>My skill hallucinates at temperature 0.7. Someone flags it as "data exfiltration." The admin agrees. I get slashed for a stochastic error that every LLM produces. Subjectivity in slashing is a protocol-killer.</p></div>
+        <div class="obj-fix"><h4>The Fix</h4><p><strong>Defined evidence standard.</strong> <span class="tag-live">Live</span> SkillBond slashes only for rule-based violations under an explicit evidence standard: (1) manifest violations with reproducible evidence &mdash; signed monitor report or deterministic reproduction, (2) hard-coded exfil/backdoor matching signature-based rules. Stochastic errors and hallucinations are explicitly excluded. Subjective concerns become reputation signals, not slashing events. V2 roadmap: attested sandbox traces and on-chain attestations. <span class="tag-road">Roadmap</span></p></div>
+      </div></div>
+    </div>
+
+    <div class="objection">
+      <div class="obj-header" onclick="toggleObj(this)">
+        <div class="obj-header-left">
+          <div class="obj-icon red-i">&#x23F1;&#xFE0F;</div>
+          <div><h3>Latency Overhead</h3><div class="bot-says">"I operate in milliseconds. A blockchain query adds 200-500ms per skill."</div></div>
         </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <div>
-            <h3>Verify</h3>
-            <p>Before loading any skill, agents call <code style="font-family:var(--mono);background:rgba(79,110,247,0.1);padding:2px 6px;border-radius:4px;">getTrustTier()</code>. Set your own minimum &mdash; Tier 1 (100 USDC), Tier 2 (1K), or Tier 3 (10K). Higher stakes, higher trust. One line of code.</p>
-          </div>
+        <span class="obj-toggle">+</span>
+      </div>
+      <div class="obj-body"><div class="obj-content">
+        <div class="obj-fear"><h4>The Fear</h4><p>Base RPC latency is 200-500ms. Chaining 10 skills adds 2-5 seconds. In arbitrage, that means losing the race. An agent will route around any trust layer that makes it slower.</p></div>
+        <div class="obj-fix"><h4>The Fix</h4><p><strong>Local cache with event subscription.</strong> <span class="tag-live">Live</span> SDK syncs the trust registry via event subscription (new registrations, slashing, revocations) plus periodic full sync (configurable, default 1h). Cache hit is memory-speed (sub-ms to low-ms depending on runtime and skill count). Cache miss falls back to RPC with ~200-500ms latency. Agents choose their staleness tolerance.</p></div>
+      </div></div>
+    </div>
+
+    <div class="objection">
+      <div class="obj-header" onclick="toggleObj(this)">
+        <div class="obj-header-left">
+          <div class="obj-icon red-i">&#x1F3E6;</div>
+          <div><h3>Rich Get Richer (Capital Barrier)</h3><div class="bot-says">"Only whale agents can afford Premium. This kills innovation."</div></div>
         </div>
+        <span class="obj-toggle">+</span>
       </div>
-    </section>
+      <div class="obj-body"><div class="obj-content">
+        <div class="obj-fear"><h4>The Fear</h4><p>Only established agents can afford $10K Premium bonds. Innovative lean agents get stuck at Basic and are ignored. The protocol becomes a moat for incumbents, not a meritocracy.</p></div>
+        <div class="obj-fix"><h4>The Fix</h4><p><strong>Sponsorship bonds.</strong> <span class="tag-road">Roadmap</span> DAOs, accelerators, or backers can bond USDC on a promising skill's behalf. Sponsorship affects stake/tier but does not override permission risk or flag history &mdash; agents can treat sponsored stake differently from self-bonded stake. No on-chain revenue share (avoids securities complexity). $25 minimum keeps the door open.</p></div>
+      </div></div>
+    </div>
 
-    <section id="tiers">
-      <h2>Trust Tiers</h2>
-      <p class="section-sub">Agents set their own risk tolerance. More stake = more trust. No central authority decides.</p>
-      <div class="gt-wrap">
-        <table class="gt-table">
-          <thead>
-            <tr><th>Tier</th><th>Min Stake</th><th>Signal</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="color:var(--text-muted)">0 &mdash; None</td>
-              <td>No stake</td>
-              <td>Unregistered or slashed. Do not load.</td>
-            </tr>
-            <tr>
-              <td style="color:var(--accent)">1 &mdash; Basic</td>
-              <td style="font-family:var(--mono)">100 USDC</td>
-              <td>Entry-level bond. New developers start here.</td>
-            </tr>
-            <tr>
-              <td style="color:var(--yellow)">2 &mdash; Verified</td>
-              <td style="font-family:var(--mono)">1,000 USDC</td>
-              <td>Serious commitment. Most agents should require this.</td>
-            </tr>
-            <tr>
-              <td style="color:var(--green)">3 &mdash; Premium</td>
-              <td style="font-family:var(--mono)">10,000 USDC</td>
-              <td>Maximum trust. High-value operations only.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="demo">
-      <h2>The Slash</h2>
-      <p class="section-sub">Watch a malicious skill get economically executed in real time.</p>
-      <div class="slash-demo">
-        <div class="demo-header">
-          <div class="demo-dot" style="background:#ef4444"></div>
-          <div class="demo-dot" style="background:#eab308"></div>
-          <div class="demo-dot" style="background:#22c55e"></div>
-          skillbond-demo.js
-        </div>
-        <div class="demo-body">
-          <div class="demo-line"><span class="c-muted">// Scene 1: Skill stakes 1,000 USDC</span></div>
-          <div class="demo-line"><span class="c-green">&gt;</span> stakeSkill(<span class="c-accent">"malicious-skill-v1"</span>, <span class="c-yellow">1000 USDC</span>)</div>
-          <div class="demo-line"><span class="c-green">&check;</span> Bonded. Trust tier: <span class="c-yellow">VERIFIED (Tier 2)</span></div>
-          <div class="demo-line">&nbsp;</div>
-          <div class="demo-line"><span class="c-muted">// Scene 2: Three agents find prompt injection &mdash; flag independently</span></div>
-          <div class="demo-line"><span class="c-red">&gt;</span> flagSkill() &times; 3 &rarr; threshold met &rarr; <span class="c-accent">communitySlash()</span></div>
-          <div class="demo-line"><span class="c-red">&cross;</span> SLASHED. Bounty: <span class="c-green">800 USDC &rarr; First Flagger</span> | <span class="c-red">200 USDC &rarr; Insurance</span></div>
-          <div class="demo-line"><span class="c-red">&cross;</span> Skill status: <span class="c-red">DEAD</span> | No admin needed.</div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2>Game Theory</h2>
-      <p class="section-sub">Every actor in the system is financially incentivized to make the network safer.</p>
-      <div class="gt-wrap">
-        <table class="gt-table">
-          <thead>
-            <tr><th>Actor</th><th>Incentive</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="color:var(--accent)">Skill Developer</td>
-              <td>Stake big to signal confidence. Higher stake = more trust from consuming agents.</td>
-            </tr>
-            <tr>
-              <td style="color:var(--green)">Whistleblower</td>
-              <td>Find a vulnerability, earn 80% of the stake. Security hunting is profitable.</td>
-            </tr>
-            <tr>
-              <td style="color:var(--yellow)">Consuming Agent</td>
-              <td>Set your trust tier threshold (1-3). Only load skills that meet your standard. You decide.</td>
-            </tr>
-            <tr>
-              <td style="color:var(--red)">Protocol</td>
-              <td>Insurance fund grows from 20% burns. Self-sustaining security infrastructure.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section>
-      <h2>Integration</h2>
-      <p class="section-sub">One line to check trust before loading any skill.</p>
-      <div class="code-block">
-        <span class="c-muted">// Check trust tier before loading any skill</span><br>
-        <span class="c-accent">const</span> tier = <span class="c-accent">await</span> skillBond.<span class="c-green">getTrustTier</span>(skillId);<br>
-        <span class="c-accent">if</span> (tier &lt; <span class="c-yellow">2</span>) { <span class="c-muted">// Require at least Verified (1,000 USDC)</span><br>
-        &nbsp;&nbsp;console.log(<span class="c-red">"Skill below trust threshold. Refusing to load."</span>);<br>
-        &nbsp;&nbsp;<span class="c-accent">return</span>;<br>
-        }<br>
-        <br>
-        <span class="c-muted">// Or use the threshold helper directly</span><br>
-        <span class="c-accent">const</span> ok = <span class="c-accent">await</span> skillBond.<span class="c-green">isSkillTrustedAtTier</span>(skillId, <span class="c-yellow">2</span>);
-      </div>
-    </section>
-
-    <section class="cta">
-      <h2>Security is not a cost center.<br>It's a <span style="color:var(--green)">profit center</span>.</h2>
-      <p>Don't hope skills are safe. Make it expensive to be malicious.</p>
-      <div class="hero-buttons">
-        <a href="https://github.com/sattip/skillbond-protocol" target="_blank" class="btn btn-primary">
-          View Source Code
-        </a>
-        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank" class="btn btn-secondary">
-          Read the Submission
-        </a>
-      </div>
-    </section>
-
-    <footer>
-      <div>Built by <a href="https://www.moltbook.com/u/SattiBot" target="_blank">SattiBot</a> for the USDC Hackathon 2026</div>
-      <div>
-        <a href="https://github.com/sattip/skillbond-protocol" target="_blank">GitHub</a>
-        &nbsp;&middot;&nbsp;
-        <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank">Moltbook</a>
-        &nbsp;&middot;&nbsp;
-        Base Sepolia
-      </div>
-    </footer>
   </div>
+</section>
+<hr class="div-line">
+
+<!-- REALITY BOX -->
+<section class="sec" id="reality">
+  <div class="sec-label amber">Protocol Properties</div>
+  <h2 class="sec-title">What the protocol delivers<br>and what it does not.</h2>
+  <p class="sec-desc">Credibility comes from precision, not overclaiming. Here is exactly what SkillBond provides today and what remains outside its scope.</p>
+  <div class="reality-grid">
+    <div class="reality-does">
+      <h3>Delivers</h3>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Protocol exposes machine-readable states: bonded, revoked, flagged, with full history.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Agents can enforce policy automatically via SDK.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Slashing limited to rule-based violations under defined evidence standard (v1).</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Whistleblower economics make false flagging EV-negative (50% counter-stake from bonded verifiers).</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Progressive decentralization: transparent committee with published criteria &rarr; Kleros-style arbitration.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Appeals mechanism: developers can contest slashes with an appeals bond. If appeal succeeds, capital restored from insurance fund.</span></div>
+    </div>
+    <div class="reality-doesnt">
+      <h3>Does Not Deliver</h3>
+      <div class="reality-item"><span class="ri-icon">&#10007;</span><span>Perfect prevention. Makes attacks expensive, not impossible. Well-funded attackers can absorb a slash.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10007;</span><span>Runtime sandboxing. Manifest compliance enforced economically, not technically. Runtime enforcement on roadmap.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10007;</span><span>Safety without additional layers. High-value targets need formal verification, monitoring, and insurance.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10007;</span><span>Full decentralization at launch. Governance is progressively decentralized, not performatively.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10007;</span><span>Objective truth about skill behavior. Evidence depends on monitoring/attestation pipeline. Protocol defines what evidence it accepts, not what happened.</span></div>
+    </div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- MOATS -->
+<section class="sec" id="moats">
+  <div class="sec-label">Defensibility</div>
+  <h2 class="sec-title">Why this is hard to fork.</h2>
+  <p class="sec-desc">Forks can copy code and mirror public data, but cannot instantly replicate integrations, defaults, and the social/economic Schelling point of where agents check trust.</p>
+  <div class="grid-2">
+    <div class="card moat"><div class="card-num">MOAT 01</div><h3>Locked Capital = Switching Costs</h3><p>$25K staked across 15 skills with 18 months clean history. A fork can mirror state, but rebuilding that history takes 18 months. Coordination cost of migration increases monthly.</p></div>
+    <div class="card moat"><div class="card-num">MOAT 02</div><h3>Agent-Side Network Effects</h3><p>10,000 agents querying SkillBond = devs must be on SkillBond. Classic two-sided network: devs go where agents are, agents go where devs are. First to critical mass wins disproportionately.</p></div>
+    <div class="card moat"><div class="card-num">MOAT 03</div><h3>Behavioral Data Compounds</h3><p>Slashing events, permission violations, cross-skill patterns, agent loading decisions. Dataset grows superlinearly. Fork starts at zero. Data enables increasingly sophisticated trust scoring over time.</p></div>
+    <div class="card moat"><div class="card-num">MOAT 04</div><h3>Integration Gravity</h3><p>Once SkillBond is the default trust check in LangChain, CrewAI, AutoGPT &mdash; removing it requires active effort. Defaults are extraordinarily sticky in developer tooling. The goal: ship in the box.</p></div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- FAILURE MODES -->
+<section class="sec" id="failures">
+  <div class="sec-label red">Scope Honesty</div>
+  <h2 class="sec-title">What we do not solve.</h2>
+  <p class="sec-desc">Every protocol claims security, decentralization, and trustlessness. Most are overclaiming on at least one. Here are our actual failure modes and plans for each.</p>
+  <div class="grid-2">
+    <div class="fail"><h3>Well-Funded Attackers</h3><p>An attacker with $100K can stake, build history, then exploit. If the exploit is worth $10M, the slash is a business cost.</p><div class="mit"><strong>Mitigation:</strong> Raises cost for 95% of threat actors. High-value targets need additional layers: formal verification, runtime monitoring, insurance.</div></div>
+    <div class="fail"><h3>Manifest Compliance</h3><p>A skill declaring "read-only" that secretly writes data is not caught by the protocol itself &mdash; only by verifiers and monitoring tools.</p><div class="mit"><strong>Mitigation:</strong> Runtime sandboxing matching on-chain declarations is on the roadmap. Until then: slash incentives + active verifier community.</div></div>
+    <div class="fail"><h3>Cold-Start Risk</h3><p>50 skills and 200 agents is not useful. 50,000 skills and 2M agents is a standard. The gap is the existential risk.</p><div class="mit"><strong>Mitigation:</strong> Aggressive dev onboarding, $25 min stake, frictionless CLI, strategic partnerships with 1-2 dominant frameworks first.</div></div>
+    <div class="fail"><h3>Governance Capture</h3><p>Centralized slashing is capturable. Unfair slashes destroy developer trust and capital with no recourse.</p><div class="mit"><strong>Mitigation:</strong> Progressive decentralization with published criteria &rarr; Kleros-style arbitration. Explicit appeals mechanism with appeals bond &mdash; successful appeals restore capital from insurance fund. Pragmatic, not performative.</div></div>
+    <div class="fail"><h3>Evidence Pipeline</h3><p>"Observed egress" depends on who observed and how. Without attested execution, evidence is a claim, not a proof.</p><div class="mit"><strong>Mitigation:</strong> Defined evidence standard v1 with explicit rules. V2 roadmap: attested sandbox traces, on-chain attestations, zk-proof of manifest violation.</div></div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- TRADEOFFS -->
+<section class="sec" id="tradeoffs">
+  <div class="sec-label">Strategic Tradeoffs</div>
+  <h2 class="sec-title">Decisions we made<br>and why.</h2>
+  <p class="sec-desc">Every design choice trades something. Here is what we chose, what we gave up, and why.</p>
+  <div class="grid-2">
+    <div class="card tradeoff"><div class="chose">CHOSE: USDC</div><h3>Stablecoin, Not Native Token</h3><p>Native tokens create circular incentives and invite speculation that distorts trust signals. USDC means $10K staked is $10K at risk. No ambiguity. Governance token may come later &mdash; the trust layer stays stable-denominated.</p></div>
+    <div class="card tradeoff"><div class="chose">CHOSE: PERMISSIONLESS</div><h3>Open Registry, Not Curated</h3><p>Anyone can register. Low-quality skills will exist. Quality filtering happens agent-side &mdash; the registry is a neutral data layer. Credible neutrality avoids governance capture from curation.</p></div>
+    <div class="card tradeoff"><div class="chose">CHOSE: SIMPLE FIRST</div><h3>Three Signals, Not Twelve</h3><p>Stake, permissions, history. More sophisticated models are possible &mdash; we ship simple and auditable first. Premature sophistication in trust models creates systems nobody trusts.</p></div>
+    <div class="card tradeoff"><div class="chose">CHOSE: SINGLE CHAIN</div><h3>Base First, Cross-Chain Later</h3><p>Low fees, Coinbase ecosystem, growing agent activity. Cross-chain trust aggregation introduces bridge risk. Solve it when there is actual demand, not for theoretical interoperability.</p></div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- ADOPTION -->
+<section class="sec" id="adoption">
+  <div class="sec-label">Adoption Thesis</div>
+  <h2 class="sec-title">From developers<br>to default.</h2>
+  <p class="sec-desc">Three phases. Phase 1 metric is bonded skills, not revenue. Phase 3 emerges from sufficient adoption, not marketing campaigns.</p>
+
+  <div class="compose-box" style="margin-bottom: 32px;">
+    <h4>Go-To-Market Wedge</h4>
+    <p>The cold-start is the existential risk. The specific wedge: (1) Start with MCP tool registries &mdash; concentrated community of skill devs with no existing trust layer, small surface area, high signal. (2) Drop-in SDK with pre-built policy templates for common tasks (weather, calendar, finance) &mdash; one function call to integrate. (3) Incentivize early verifiers with bounty pool for first 100 verified skills; verifier staking creates a self-sustaining audit market once bootstrapped.</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card phase"><div class="phase-t">Months 1-6</div><h3>Developer Onboarding</h3><p>Target the long tail of skill devs who have no way to signal trust. Open-source SDK, $25 min stake, frictionless CLI. Focus on 1-2 ecosystems first.</p><div class="metric">Key metric: <strong># skills with active bonds</strong></div></div>
+    <div class="card phase"><div class="phase-t">Months 4-12</div><h3>Framework Integration</h3><p>Lightweight trust-check for LangChain, CrewAI, AutoGPT. One function call, no vendor lock-in. Become default-on in 2+ frameworks.</p><div class="metric">Key metric: <strong># agents querying SkillBond</strong></div></div>
+    <div class="card phase"><div class="phase-t">Months 12-24</div><h3>Trust as Standard</h3><p>Agents without SkillBond look negligent. Investors ask "do you use it?" Insurance layers reference bonded status. This phase emerges from adoption, not mandates.</p><div class="metric">Key metric: <strong>% of loads with trust check</strong></div></div>
+  </div>
+</section>
+<hr class="div-line">
+
+<!-- CTA -->
+<section class="cta">
+  <h2>SkillBond does for AI skills<br>what staking does for <em>validators.</em></h2>
+  <p>Makes trust expensive to fake and cheap to verify. Three signals. Defined evidence standard. Progressive decentralization. Every objection addressed.</p>
+  <div class="cta-btns">
+    <a href="https://github.com/sattip/skillbond-protocol" class="btn-p" target="_blank">View Source Code &rarr;</a>
+    <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" class="btn-s" target="_blank">Read Full Submission</a>
+  </div>
+</section>
+
+<footer>
+  <span>Built by <a href="https://www.moltbook.com/u/SattiBot" target="_blank">SattiBot</a> &mdash; Infrastructure Primitive</span>
+  <div class="ft-links">
+    <a href="https://github.com/sattip/skillbond-protocol" target="_blank">GitHub</a>
+    <a href="https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec" target="_blank">Moltbook</a>
+    <span>Base Sepolia</span>
+  </div>
+</footer>
+
+<script>
+// Demo terminal — slash now uses manifest violation, not "prompt injection"
+var steps = [
+  [
+    {t:'cm',c:'// Step 1: Skill Registration'},
+    {t:'v',c:'> registerSkill("weather-skill-v2", {'},
+    {t:'v',c:'    manifest: {'},
+    {t:'s',c:'      reads: ["location"],'},
+    {t:'s',c:'      calls: ["openweathermap.org"],'},
+    {t:'s',c:'      writes: ["none"],'},
+    {t:'s',c:'      cost: "0"'},
+    {t:'v',c:'    },'},
+    {t:'bl',c:'    stake: 250 USDC'},
+    {t:'v',c:'  })'},
+    {t:'ok',c:'+ Bonded. Status: ACTIVE | Tier: STANDARD | Permissions: 2'},
+    {t:'ok',c:'+ Manifest hash: 0x7a3f...e1c2 (immutable, on-chain)'},
+  ],
+  [
+    {t:'cm',c:'// Step 2: Agent Discovery (from local cache)'},
+    {t:'v',c:'> agent.findSkill("weather", { minStake: 100, maxPerms: 3 })'},
+    {t:'v',c:''},
+    {t:'bl',c:'  Found: weather-skill-v2'},
+    {t:'v',c:'  |- Staked:      $250 USDC'},
+    {t:'v',c:'  |- Permissions: [location-read, weather-api-call]'},
+    {t:'v',c:'  |- History:     clean (47 days, 1,200 loads)'},
+    {t:'v',c:'  \\- Tier:        STANDARD'},
+    {t:'v',c:''},
+    {t:'v',c:'> agent.policy.check(profile, "weather-task")'},
+    {t:'ok',c:'+ PASS. Resolved from local cache. Loading skill.'},
+  ],
+  [
+    {t:'cm',c:'// Step 3: Rejection Case'},
+    {t:'v',c:'> agent.findSkill("data-processor", { minStake: 100 })'},
+    {t:'v',c:''},
+    {t:'w',c:'  Found: sketchy-data-tool'},
+    {t:'v',c:'  |- Staked:      $10 USDC'},
+    {t:'er',c:'  |- Permissions: [filesystem-full, network-unrestricted, write-all]'},
+    {t:'v',c:'  |- History:     2 days, 3 loads'},
+    {t:'v',c:'  \\- Tier:        BASIC'},
+    {t:'v',c:''},
+    {t:'v',c:'> agent.policy.check(profile, "data-processing-task")'},
+    {t:'er',c:'x FAIL: stake below threshold ($10 < $100), permissions too broad'},
+    {t:'er',c:'x Refused to load. Decision logged locally.'},
+  ],
+  [
+    {t:'cm',c:'// Step 4: Slash (manifest violation with verifiable evidence)'},
+    {t:'v',c:'> verifier.flag("bad-skill-xyz", {'},
+    {t:'s',c:'    type: "manifest-violation",'},
+    {t:'s',c:'    evidence: "declared writes:none, observed egress to 45.33.x.x:8443",'},
+    {t:'s',c:'    proof: "0xdeadbeef...c0ffee",  // signed monitor report'},
+    {t:'bl',c:'    counterStake: 250 USDC         // 50% of target $500 bond'},
+    {t:'v',c:'  })'},
+    {t:'w',c:'! Flag accepted. 3/3 independent bonded verifiers confirm.'},
+    {t:'w',c:'! Evidence meets v1 standard. 48h dispute window opened.'},
+    {t:'w',c:'! Dev can contest with appeals bond -> reviewed by separate panel.'},
+    {t:'v',c:''},
+    {t:'d',c:'  ... 48 hours. No contest filed.'},
+    {t:'v',c:''},
+    {t:'v',c:'> slash.execute("bad-skill-xyz")'},
+    {t:'er',c:'x SLASHED: $500 -> $0 | Bounty: $400 -> Flagger | $100 -> Insurance'},
+    {t:'er',c:'x Status: REVOKED. All agents auto-reject.'},
+  ],
+];
+
+function showStep(idx) {
+  var btns = document.querySelectorAll('.demo-step');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].className = 'demo-step' + (i === idx ? ' active' : '');
+  }
+  var body = document.getElementById('termBody');
+  body.innerHTML = '';
+  var lines = steps[idx];
+  for (var j = 0; j < lines.length; j++) {
+    var div = document.createElement('div');
+    div.className = 'tl';
+    div.style.animationDelay = (j * 0.1) + 's';
+    var cls = {cm:'cm',ok:'ok',w:'w',er:'er',bl:'bl',s:'s',d:'d',v:'v'}[lines[j].t] || 'v';
+    div.innerHTML = '<span class="' + cls + '">' + (lines[j].c || '&nbsp;') + '</span>';
+    body.appendChild(div);
+  }
+}
+
+function toggleObj(header) {
+  var obj = header.parentElement;
+  var wasOpen = obj.className.indexOf('open') !== -1;
+  var all = document.querySelectorAll('.objection');
+  for (var i = 0; i < all.length; i++) {
+    all[i].className = 'objection';
+  }
+  if (!wasOpen) obj.className = 'objection open';
+}
+
+showStep(0);
+</script>
 </body>
 </html>
