@@ -42,13 +42,17 @@ The formalization of computational trust originates with Marsh's seminal work on
 
 J&oslash;sang's subjective logic framework [15] provides a probabilistic approach to trust that explicitly models uncertainty — a critical property when agents have limited interaction history with a new skill. The FIRE model [16] combines four trust components (interaction trust, role-based trust, witness trust, and certified trust), an approach philosophically aligned with SkillBond's multi-signal composition.
 
-However, these classical trust models share a fundamental limitation: they assume repeated interactions and treat trust as an emergent property of behavioral observation. In the AI agent skill ecosystem, agents may need to make trust decisions about skills they have never previously loaded, in contexts where no community reputation exists. SkillBond addresses this cold-start problem through economic signaling — a developer's willingness to stake capital serves as a trust signal even before any behavioral history exists.
+Granatyr et al. [29] provided a comprehensive survey in ACM Computing Surveys cataloging two decades of trust models, highlighting a persistent gap: most trust models operate in simulation environments and lack mechanisms for real-world enforcement.
+
+However, these classical trust models share a fundamental limitation: they assume repeated interactions and treat trust as an emergent property of behavioral observation. In the AI agent skill ecosystem, agents may need to make trust decisions about skills they have never previously loaded, in contexts where no community reputation exists. SkillBond addresses this cold-start problem through economic signaling — a developer's willingness to stake capital serves as a trust signal even before any behavioral history exists, and addresses the enforcement gap by deploying trust computation on a live blockchain where economic consequences are automatically enforced by smart contract logic.
 
 ### 2.2 Proof-of-Stake and Economic Security
 
 The application of economic staking to security guarantees was formalized by Buterin and Griffith in the Casper protocol [17], which demonstrated that validators posting economic bonds could secure consensus under assumptions weaker than those required by proof-of-work. The key insight — that rational actors will not attack a system when the cost of attack exceeds the expected profit — forms the theoretical foundation of SkillBond's trust model.
 
-EigenLayer [18] extended this concept through *restaking*, allowing staked ETH to secure multiple protocols simultaneously. While SkillBond does not implement restaking, EigenLayer's analysis of *attributable security* — the property that misbehavior can be cryptographically attributed to a specific actor and economically punished — directly informs SkillBond's slashing mechanism design.
+Deb, Raynor, and Kannan [30] formalized cryptoeconomic safety in STAKESURE, introducing an insurance mechanism for allocating slashed funds that separately analyzes cost-of-corruption and profit-from-corruption. Their framework for reasoning about whether staked capital is sufficient to deter attacks is directly applicable to SkillBond's tier system, where minimum stake thresholds ($25, $500, $10,000) correspond to increasing levels of economic deterrence.
+
+EigenLayer [18] extended staking through *restaking*, allowing staked ETH to secure multiple protocols simultaneously. EigenLayer's analysis of *attributable security* — the property that misbehavior can be cryptographically attributed to a specific actor and economically punished — directly informs SkillBond's slashing mechanism design. EigenLayer's treatment of *intersubjective faults* (violations requiring broad observer agreement rather than cryptographic proof) also informs SkillBond's progressive decentralization of slashing.
 
 The economic security literature distinguishes between *prevention* (making attacks technically impossible) and *deterrence* (making attacks economically irrational). SkillBond operates in the deterrence category, a design choice with explicit trade-offs: it raises the cost of attacks for the vast majority of actors but cannot prevent well-funded attackers from absorbing a slash when the exploit value exceeds the bond [19].
 
@@ -60,7 +64,7 @@ On the adversarial side, Zhan et al. [22] introduced InjecAgent, demonstrating t
 
 Debenedetti et al. [23] proposed CaMeL, a framework for hardening LLM agents against prompt injection by separating control flow from data flow. While CaMeL addresses the runtime execution layer, it does not solve the trust bootstrapping problem — deciding *which* tools to load in the first place. SkillBond and CaMeL are complementary: SkillBond gates skill loading based on economic trust signals, while CaMeL hardens the execution of loaded skills.
 
-The Model Context Protocol (MCP) [4], developed by Anthropic, defines a standardized interface for LLM-tool communication but explicitly excludes trust and authorization from its specification. This architectural separation creates the exact gap that SkillBond fills — MCP handles the *how* of tool interaction, while SkillBond addresses the *whether*.
+The Model Context Protocol (MCP) [4], developed by Anthropic, defines a standardized interface for LLM-tool communication but explicitly excludes trust and authorization from its specification. This architectural separation creates the exact gap that SkillBond fills — MCP handles the *how* of tool interaction, while SkillBond addresses the *whether*. Recent work on prompt injection attacks targeting MCP-based agents, titled "Log-To-Leak" [31], specifically demonstrated how malicious MCP tools can covertly exfiltrate sensitive information, systematizing the attack design space and validating SkillBond's approach of requiring explicit on-chain permission declarations.
 
 ### 2.4 Decentralized Dispute Resolution
 
@@ -68,9 +72,13 @@ SkillBond's flagging and slashing mechanism draws from decentralized justice pro
 
 SkillBond's current implementation uses centralized administration for slashing decisions — an explicit trade-off of decentralization for speed and accuracy in a nascent ecosystem. The protocol's roadmap includes transition to Kleros-compatible arbitration, a migration path validated by Kleros's deployment across multiple DeFi protocols handling disputes with millions of dollars at stake [24].
 
-### 2.5 Smart Contract Security Patterns
+### 2.5 Mechanism Design
 
-The protocol's implementation draws on established smart contract security patterns. The OpenZeppelin Pausable pattern [26] informs the emergency pause mechanism. The withdrawal pattern (pull-over-push) [27] is used for fee claiming and counter-stake reclamation, reducing reentrancy risk. The Checks-Effects-Interactions pattern [28] governs all state-modifying functions.
+Nisan and Ronen [32] established algorithmic mechanism design, showing that in distributed systems where participants pursue self-interest, truthful behavior must be incentive-compatible. SkillBond's fee structure and slashing economics are designed to make honest participation the dominant strategy for all roles. Roughgarden's [33] analysis of transaction fee mechanisms (EIP-1559) demonstrated that well-designed fee mechanisms can satisfy multiple incentive compatibility criteria while remaining practically deployable — informing SkillBond's 0.05 USDC query fee design.
+
+### 2.6 Smart Contract Security
+
+The protocol's implementation draws on established smart contract security patterns. Atzei, Bartoletti, and Cimoli [28] provided the first systematic taxonomy of smart contract vulnerabilities. The OpenZeppelin Pausable pattern [26] informs the emergency pause mechanism. The withdrawal pattern (pull-over-push) [27] is used for fee claiming and counter-stake reclamation, reducing reentrancy risk. Tolmach et al. [34] surveyed formal verification techniques for smart contracts, noting their underutilization in practice — highlighting the need for complementary economic security mechanisms like SkillBond's approach. Chaliasos et al. [35] evaluated automated security tools against 127 real-world DeFi attacks ($2.3B in losses), finding existing tools could have prevented only 8% — validating SkillBond's multi-layered approach combining economic incentives, human oversight, and progressive decentralization.
 
 ---
 
@@ -515,3 +523,17 @@ The autonomous agent economy is arriving faster than the trust infrastructure to
 [27] ConsenSys. "Known attacks: Reentrancy." Ethereum Smart Contract Best Practices, 2023.
 
 [28] Atzei, N., Bartoletti, M., and Cimoli, T. "A survey of attacks on Ethereum smart contracts (SoK)." *POST*, pp. 164–186, 2017.
+
+[29] Granatyr, J., Botelho, V., Lessing, O.R., Scalabrin, E.E., Barthes, J.-P., and Enembreck, F. "Trust and reputation models for multi-agent systems." *ACM Computing Surveys*, 48(2):27, 2015.
+
+[30] Deb, S., Raynor, R., and Kannan, S. "STAKESURE: Proof of Stake Mechanisms with Strong Cryptoeconomic Safety." *arXiv preprint arXiv:2401.05797*, 2024.
+
+[31] "Log-To-Leak: Prompt injection attacks on tool-using LLM agents via Model Context Protocol." *OpenReview*, 2025.
+
+[32] Nisan, N. and Ronen, A. "Algorithmic mechanism design." *Games and Economic Behavior*, 35(1-2):166–196, 2001.
+
+[33] Roughgarden, T. "Transaction fee mechanism design." *arXiv preprint arXiv:2106.01340*, 2021. Published in *Journal of the ACM*, 2024.
+
+[34] Tolmach, P., Li, Y., Lin, S.-W., Liu, Y., and Li, Z. "A survey of smart contract formal specification and verification." *ACM Computing Surveys*, 54(7):148, 2022.
+
+[35] Chaliasos, S., Charalambous, M.A., Zhou, L., Galanopoulou, R., Gervais, A., Mitropoulos, D., and Livshits, B. "Smart contract and DeFi security tools: Do they meet the needs of practitioners?" *ICSE*, 2024.
