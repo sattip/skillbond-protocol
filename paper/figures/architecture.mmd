@@ -1,0 +1,28 @@
+graph TB
+    subgraph agent["AI Agent"]
+        policy["Trust Policy Engine (SDK)<br/><i>minStake: 500, minTier: 2, minAge: 30d</i>"]
+        cache["Local Cache<br/><i>event-synced, sub-ms reads</i>"]
+        policy -->|"checkPolicy(skillId)"| cache
+    end
+
+    subgraph registry["SkillBond Registry (On-Chain)"]
+        staking["Staking<br/>Module"]
+        tiers["Trust Tiers<br/>(Age-gated)"]
+        flagslash["Flag/Slash<br/>Module"]
+        fees["Usage<br/>Fees"]
+        sponsor["Sponsorship<br/>Bonds"]
+        pause["Emergency<br/>Pause"]
+    end
+
+    cache -->|"cache miss → RPC fallback"| registry
+
+    style agent fill:#f0f4f8,stroke:#4a7c59,stroke-width:2px,color:#1a1a1a
+    style registry fill:#f7f7f7,stroke:#2d5a8e,stroke-width:2px,color:#1a1a1a
+    style policy fill:#fff,stroke:#4a7c59,stroke-width:1px
+    style cache fill:#fff,stroke:#4a7c59,stroke-width:1px
+    style staking fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style tiers fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style flagslash fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style fees fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style sponsor fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style pause fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px

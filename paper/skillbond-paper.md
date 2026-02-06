@@ -95,34 +95,7 @@ The architecture comprises four logical layers:
 3. **Enforcement Layer**: A flagging mechanism with counter-stakes enables whistleblowers to report malicious behavior; verified violations trigger automatic slashing with bounty distribution.
 4. **Governance Layer**: Administrative functions for slash execution, flag dismissal, threshold configuration, and emergency pause.
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    AI Agent                          │
-│  ┌──────────────────────────────────────────────┐   │
-│  │  Trust Policy Engine (SDK)                    │   │
-│  │  minStake: 500, minTier: 2, minAge: 30d      │   │
-│  └──────────────┬───────────────────────────────┘   │
-│                 │ checkPolicy(skillId)               │
-│                 ▼                                    │
-│  ┌──────────────────────────────────────────────┐   │
-│  │  Local Cache (event-synced, sub-ms reads)     │   │
-│  └──────────────┬───────────────────────────────┘   │
-│                 │ cache miss → RPC fallback          │
-└─────────────────┼───────────────────────────────────┘
-                  ▼
-┌─────────────────────────────────────────────────────┐
-│          SkillBond Registry (On-Chain)               │
-│                                                      │
-│  ┌─────────┐  ┌─────────────┐  ┌────────────────┐  │
-│  │ Staking  │  │ Trust Tiers │  │ Flag/Slash     │  │
-│  │ Module   │  │ (Age-gated) │  │ Module         │  │
-│  └─────────┘  └─────────────┘  └────────────────┘  │
-│  ┌─────────┐  ┌─────────────┐  ┌────────────────┐  │
-│  │ Usage   │  │ Sponsorship │  │ Emergency      │  │
-│  │ Fees    │  │ Bonds       │  │ Pause          │  │
-│  └─────────┘  └─────────────┘  └────────────────┘  │
-└─────────────────────────────────────────────────────┘
-```
+![Figure 1: SkillBond Architecture — Agent queries trust via SDK with local caching, falling back to on-chain registry](figures/architecture.png)
 
 ### 3.2 State Machine
 
@@ -142,6 +115,8 @@ The state transitions are:
 | WITHDRAWING → INACTIVE | `completeWithdrawal()` | Cooldown period elapsed |
 | ACTIVE → SLASHED | `executeSlash()` or `communitySlash()` | Admin confirms or flag threshold met |
 | WITHDRAWING → SLASHED | `executeSlash()` or `communitySlash()` | Skills remain slashable during withdrawal |
+
+![Figure 2: SkillBond State Machine — Skills transition through four states with slashing possible from both ACTIVE and WITHDRAWING](figures/state-machine.png)
 
 The WITHDRAWING state is a critical design element: it makes withdrawal intent visible to all agents before capital is removed. Any agent observing a skill in WITHDRAWING status can immediately downgrade or refuse trust, preventing silent rug-pulls where a developer removes their bond and immediately exploits users who cached the previous trust level.
 
@@ -176,6 +151,8 @@ The flagging mechanism implements a two-sided market for vulnerability discovery
 
 **Flag Dismissal.** If a flag is found to be false, the admin calls `dismissFlag(skillId, flagger)`, which confiscates the flagger's counter-stake to the insurance fund, decrements the flag count, and clears the flagger's status.
 
+![Figure 3: Flagging and Slashing Flow — Whistleblowers post counter-stakes and submit evidence; valid flags trigger slashing with 80/20 bounty distribution, while false flags result in counter-stake confiscation](figures/slashing-flow.png)
+
 ### 3.5 Economic Model
 
 #### 3.5.1 Usage Fees (x402-style Micropayments)
@@ -188,6 +165,8 @@ The paid query endpoint `queryTrust(skillId)` charges 0.05 USDC per call, implem
 This transforms bonded capital from a pure cost into a revenue-generating asset. A skill queried 10,000 times per month generates $350/month in passive income for the owner — a 70% monthly yield on a $500 stake.
 
 Free view functions (`isSkillTrusted()`, `getTrustTier()`, `isSkillTrustedAtTier()`) remain available for basic binary checks, preserving the protocol's value as a public good while monetizing enriched trust data.
+
+![Figure 4: Fee Distribution — Each queryTrust() call charges 0.05 USDC, split 70/30 between skill owner and protocol insurance fund](figures/fee-flow.png)
 
 #### 3.5.2 Sponsorship Bonds
 

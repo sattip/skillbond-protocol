@@ -1,0 +1,13 @@
+flowchart LR
+    A["Agent calls<br/>queryTrust(skillId)"] --> B["0.05 USDC fee"]
+    B --> C{"Split"}
+    C -->|"70%<br/>0.035 USDC"| D["Skill Owner<br/><i>passive income</i>"]
+    C -->|"30%<br/>0.015 USDC"| E["Insurance Fund<br/><i>protocol reserves</i>"]
+    D --> F["claimFees()"]
+
+    style A fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style B fill:#fff3e0,stroke:#e65100,stroke-width:1px
+    style C fill:#fff,stroke:#666,stroke-width:1px
+    style D fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px

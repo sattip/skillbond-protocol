@@ -1,0 +1,30 @@
+flowchart TB
+    A["Whistleblower<br/>discovers violation"] --> B{"Post counter-stake<br/>(50% of target's bond)"}
+    B --> C["flagSkill(skillId, evidenceHash)<br/><i>evidence hash stored on-chain</i>"]
+    C --> D{"Flag threshold<br/>met?"}
+
+    D -->|"No"| E["Admin reviews<br/>evidence off-chain"]
+    D -->|"Yes"| F["communitySlash(skillId)<br/><i>permissionless</i>"]
+
+    E -->|"Valid"| G["executeSlash(skillId, whistleblower)"]
+    E -->|"Invalid"| H["dismissFlag(skillId, flagger)"]
+
+    G --> I["80% bounty → Whistleblower<br/>20% → Insurance Fund<br/>Counter-stake returned"]
+    F --> I
+    H --> J["Counter-stake → Insurance Fund<br/>Flag count decremented"]
+
+    I --> K["Skill status → SLASHED<br/>All agents auto-reject"]
+    J --> L["Skill remains ACTIVE"]
+
+    style A fill:#fff3e0,stroke:#e65100,stroke-width:1px
+    style B fill:#fff,stroke:#666,stroke-width:1px
+    style C fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style D fill:#fff,stroke:#666,stroke-width:1px
+    style E fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style F fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style G fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style H fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style I fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style J fill:#ffebee,stroke:#c62828,stroke-width:1px
+    style K fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px
+    style L fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px

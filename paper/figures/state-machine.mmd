@@ -1,0 +1,26 @@
+stateDiagram-v2
+    [*] --> INACTIVE
+    INACTIVE --> ACTIVE : stakeSkill()<br/>stake ≥ 25 USDC
+    ACTIVE --> WITHDRAWING : initiateWithdrawal()<br/>starts 7-day cooldown
+    WITHDRAWING --> ACTIVE : cancelWithdrawal()
+    WITHDRAWING --> INACTIVE : completeWithdrawal()<br/>after cooldown
+    ACTIVE --> SLASHED : executeSlash() /<br/>communitySlash()
+    WITHDRAWING --> SLASHED : executeSlash() /<br/>communitySlash()
+    SLASHED --> [*]
+
+    state ACTIVE {
+        [*] --> Trusted
+        note right of Trusted
+            Skill is trusted
+            Queryable by agents
+        end note
+    }
+
+    state WITHDRAWING {
+        [*] --> CooldownActive
+        note right of CooldownActive
+            7-day cooldown
+            Still slashable
+            Visible to agents
+        end note
+    }
