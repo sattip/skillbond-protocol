@@ -1,17 +1,25 @@
-graph TB
+graph LR
     subgraph agent["AI Agent"]
+        direction TB
         policy["Trust Policy Engine (SDK)<br/><i>minStake: 500, minTier: 2, minAge: 30d</i>"]
         cache["Local Cache<br/><i>event-synced, sub-ms reads</i>"]
         policy -->|"checkPolicy(skillId)"| cache
     end
 
     subgraph registry["SkillBond Registry (On-Chain)"]
-        staking["Staking<br/>Module"]
-        tiers["Trust Tiers<br/>(Age-gated)"]
-        flagslash["Flag/Slash<br/>Module"]
-        fees["Usage<br/>Fees"]
-        sponsor["Sponsorship<br/>Bonds"]
-        pause["Emergency<br/>Pause"]
+        direction TB
+        subgraph row1[" "]
+            direction LR
+            staking["Staking"]
+            tiers["Trust Tiers<br/>(Age-gated)"]
+            flagslash["Flag/Slash"]
+        end
+        subgraph row2[" "]
+            direction LR
+            fees["Usage Fees"]
+            sponsor["Sponsorship"]
+            pause["Emergency<br/>Pause"]
+        end
     end
 
     cache -->|"cache miss → RPC fallback"| registry
@@ -26,3 +34,5 @@ graph TB
     style fees fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
     style sponsor fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
     style pause fill:#e8f0fe,stroke:#2d5a8e,stroke-width:1px
+    style row1 fill:none,stroke:none
+    style row2 fill:none,stroke:none
