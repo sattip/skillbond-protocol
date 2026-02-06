@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SkillBond v3 - Economic Proof-of-Trust for AI Agent Skills</title>
+<title>SkillBond v4 - Economic Proof-of-Trust for AI Agent Skills</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -490,6 +490,53 @@ nav {
 .reality-does .ri-icon { color: var(--g); }
 .reality-doesnt .ri-icon { color: var(--r); }
 
+/* SDK INSTALL */
+.sdk-install {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 6px;
+  padding: 14px 20px; font-family: var(--mono); font-size: 13px;
+  margin-bottom: 32px; max-width: 420px;
+}
+.sdk-install .prompt { color: var(--t4); user-select: none; }
+.sdk-install .cmd { color: var(--g); flex: 1; }
+.sdk-install .copy-btn {
+  background: var(--s2); border: 1px solid var(--bdr2); border-radius: 3px;
+  color: var(--t3); font-family: var(--mono); font-size: 10px; font-weight: 600;
+  padding: 4px 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.sdk-install .copy-btn:hover { border-color: var(--g); color: var(--g); }
+
+/* TRUST CALCULATOR */
+.calc-box {
+  background: var(--s1); border: 1px solid var(--bdr); border-radius: 8px;
+  padding: 28px 28px; margin-top: 32px;
+}
+.calc-box h4 { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+.calc-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.calc-field { display: flex; flex-direction: column; gap: 6px; }
+.calc-field label {
+  font-family: var(--mono); font-size: 10px; color: var(--t4);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.calc-field input {
+  background: var(--s2); border: 1px solid var(--bdr2); border-radius: 4px;
+  color: var(--t1); font-family: var(--mono); font-size: 14px; font-weight: 600;
+  padding: 10px 14px; width: 160px; outline: none; transition: border-color 0.2s;
+}
+.calc-field input:focus { border-color: var(--g); }
+.calc-result {
+  display: flex; gap: 24px; flex-wrap: wrap;
+  padding: 16px 0 0; border-top: 1px solid var(--bdr);
+}
+.calc-stat { text-align: center; }
+.calc-stat .cv {
+  font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--g);
+}
+.calc-stat .cl {
+  font-size: 10px; color: var(--t4); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-top: 2px;
+}
+
 /* CTA */
 .cta {
   text-align: center; padding: 110px 40px; max-width: 680px; margin: 0 auto;
@@ -540,9 +587,10 @@ footer a:hover { color: var(--g); }
 
 <!-- NAV -->
 <nav>
-  <a class="logo" href="#"><span class="logo-box"></span>SkillBond <sup>v3</sup></a>
+  <a class="logo" href="#"><span class="logo-box"></span>SkillBond <sup>v4</sup></a>
   <div class="nav-c">
     <a href="#architecture">Architecture</a>
+    <a href="#sdk">SDK</a>
     <a href="#demo">Demo</a>
     <a href="#evidence">Evidence</a>
     <a href="#fees">Fees</a>
@@ -587,7 +635,7 @@ footer a:hover { color: var(--g); }
 <div class="stats">
   <div><div class="stat-v">80%</div><div class="stat-l">To Whistleblower</div></div>
   <div><div class="stat-v">20%</div><div class="stat-l">Insurance Fund</div></div>
-  <div><div class="stat-v">64/64</div><div class="stat-l">Tests Passing</div></div>
+  <div><div class="stat-v">81/81</div><div class="stat-l">Tests Passing</div></div>
   <div><div class="stat-v">3</div><div class="stat-l">Trust Signals</div></div>
   <div><div class="stat-v">$25</div><div class="stat-l">Min Stake</div></div>
   <div><div class="stat-v">0.05 USDC</div><div class="stat-l">Query Fee</div></div>
@@ -642,6 +690,85 @@ footer a:hover { color: var(--g); }
 </section>
 <hr class="div-line">
 
+<!-- SDK INTEGRATION -->
+<section class="sec" id="sdk">
+  <div class="sec-label">SDK Integration</div>
+  <h2 class="sec-title">Three lines to<br>trust-check a skill.</h2>
+  <p class="sec-desc">Install the SDK, create a client, and query trust. Works with any agent framework &mdash; LangChain, CrewAI, AutoGPT, or plain Node.js.</p>
+  <div class="sdk-install">
+    <span class="prompt">$</span>
+    <span class="cmd">npm install @skillbond/sdk</span>
+    <button class="copy-btn" onclick="copyInstall(this)">COPY</button>
+  </div>
+  <div class="code-block">
+    <div class="code-h">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span class="fn">quick-start.js</span>
+    </div>
+    <div class="code-b">
+<span class="kw">const</span> { SkillBondClient } = <span class="fn2">require</span>(<span class="str">"@skillbond/sdk"</span>);
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn2">SkillBondClient</span>({
+  rpcUrl: <span class="str">"https://base-sepolia.g.alchemy.com/v2/KEY"</span>,
+  contractAddress: <span class="str">"0xYOUR_CONTRACT"</span>,
+});
+
+<span class="cmt">// Check trust &mdash; one line</span>
+<span class="kw">const</span> { trusted, tier, stakeFormatted } = <span class="kw">await</span> client.<span class="fn2">isSkillTrusted</span>(<span class="str">"weather-v2"</span>);
+<span class="cmt">// &rarr; { trusted: true, tier: 2, stakeFormatted: "500.00" }</span>
+    </div>
+  </div>
+  <div class="grid-2" style="margin-top: 32px;">
+    <div class="card" style="border-left: 3px solid var(--b);">
+      <div class="card-num">BATCH QUERIES <span class="tag-live">Live</span></div>
+      <h3>Query Multiple Skills at Once</h3>
+      <p>Check trust for an entire skill chain in a single call. <code>batchQueryTrust()</code> runs queries in parallel &mdash; no sequential RPC round-trips. Pass an array of names, get an array of trust results.</p>
+    </div>
+    <div class="card" style="border-left: 3px solid var(--g);">
+      <div class="card-num">POLICY ENGINE <span class="tag-live">Live</span></div>
+      <h3>Enforce Trust Locally</h3>
+      <p>Set minimum stake, tier, and age requirements with <code>setPolicy()</code>. Then gate every skill load with <code>checkPolicy()</code> &mdash; returns <code>{ allowed, reasons }</code>. No RPC needed after initial fetch. Works as middleware in any framework.</p>
+    </div>
+  </div>
+  <div class="code-block" style="margin-top: 20px;">
+    <div class="code-h">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span class="fn">policy-enforcement.js</span>
+    </div>
+    <div class="code-b">
+<span class="cmt">// Batch query &mdash; check 3 skills in parallel</span>
+<span class="kw">const</span> results = <span class="kw">await</span> client.<span class="fn2">batchQueryTrust</span>([<span class="str">"code-review-v1"</span>, <span class="str">"data-fetch-v2"</span>, <span class="str">"email-v1"</span>]);
+
+<span class="cmt">// Policy enforcement &mdash; gate every skill load</span>
+client.<span class="fn2">setPolicy</span>({ minStake: <span class="str">"100"</span>, minTier: <span class="num">2</span>, minAge: <span class="num">604800</span> });
+<span class="kw">const</span> { allowed, reasons } = <span class="kw">await</span> client.<span class="fn2">checkPolicy</span>(<span class="str">"untrusted-skill"</span>);
+<span class="kw">if</span> (!allowed) <span class="kw">throw new</span> Error(<span class="str">`Blocked: ${reasons.join(", ")}`</span>);
+    </div>
+  </div>
+
+  <div class="calc-box">
+    <h4>Trust Revenue Calculator</h4>
+    <div class="calc-row">
+      <div class="calc-field">
+        <label>Stake (USDC)</label>
+        <input type="number" id="calcStake" value="500" min="25" oninput="updateCalc()">
+      </div>
+      <div class="calc-field">
+        <label>Queries / Day</label>
+        <input type="number" id="calcQueries" value="1000" min="0" oninput="updateCalc()">
+      </div>
+    </div>
+    <div class="calc-result" id="calcResult">
+      <div class="calc-stat"><div class="cv" id="calcTier">STANDARD</div><div class="cl">Trust Tier</div></div>
+      <div class="calc-stat"><div class="cv" id="calcDaily">$35.00</div><div class="cl">Daily Revenue</div></div>
+      <div class="calc-stat"><div class="cv" id="calcMonthly">$1,050</div><div class="cl">Monthly Revenue</div></div>
+      <div class="calc-stat"><div class="cv" id="calcAnnual">$12,775</div><div class="cl">Annual Revenue</div></div>
+      <div class="calc-stat"><div class="cv" id="calcROI">2,555%</div><div class="cl">Annual ROI</div></div>
+    </div>
+  </div>
+</section>
+<hr class="div-line">
+
 <!-- DEMO -->
 <section class="sec" id="demo">
   <div class="sec-label">Demo Walkthrough</div>
@@ -656,7 +783,7 @@ footer a:hover { color: var(--g); }
   <div class="term">
     <div class="term-bar">
       <div class="term-dots"><span></span><span></span><span></span></div>
-      <div class="term-title">skillbond-v3-demo.js</div>
+      <div class="term-title">skillbond-v4-demo.js</div>
     </div>
     <div class="term-body" id="termBody"></div>
   </div>
@@ -859,6 +986,8 @@ footer a:hover { color: var(--g); }
       <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Appeals mechanism: developers can contest slashes with an appeals bond. If appeal succeeds, capital restored from insurance fund.</span></div>
       <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Fee revenue: 0.05 USDC per trust query, 70% to skill owner, 30% to insurance. Developers earn passive income via <code>claimFees()</code>.</span></div>
       <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Sponsorship bonds: third parties can co-stake on any skill, boosting tier without the developer fronting all capital. Sponsors share slashing risk.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Batch trust queries: check multiple skills in a single SDK call via <code>batchQueryTrust()</code>. Runs in parallel &mdash; no sequential round-trips.</span></div>
+      <div class="reality-item"><span class="ri-icon">&#10003;</span><span>Emergency pause: contract owner can pause the registry in response to critical exploits. All state-changing operations halt; read queries remain available. Unpause restores normal operation.</span></div>
     </div>
     <div class="reality-doesnt">
       <h3>Does Not Deliver</h3>
@@ -1048,6 +1177,35 @@ function toggleObj(header) {
 }
 
 showStep(0);
+
+function copyInstall(btn) {
+  navigator.clipboard.writeText('npm install @skillbond/sdk').then(function() {
+    btn.textContent = 'COPIED';
+    setTimeout(function() { btn.textContent = 'COPY'; }, 2000);
+  });
+}
+
+function updateCalc() {
+  var stake = parseFloat(document.getElementById('calcStake').value) || 0;
+  var queries = parseFloat(document.getElementById('calcQueries').value) || 0;
+  var fee = 0.05;
+  var ownerShare = 0.70;
+  var daily = queries * fee * ownerShare;
+  var monthly = daily * 30;
+  var annual = daily * 365;
+  var roi = stake > 0 ? ((annual / stake) * 100) : 0;
+
+  var tier = 'NONE';
+  if (stake >= 10000) tier = 'PREMIUM';
+  else if (stake >= 500) tier = 'STANDARD';
+  else if (stake >= 25) tier = 'BASIC';
+
+  document.getElementById('calcTier').textContent = tier;
+  document.getElementById('calcDaily').textContent = '$' + daily.toFixed(2);
+  document.getElementById('calcMonthly').textContent = '$' + Math.round(monthly).toLocaleString();
+  document.getElementById('calcAnnual').textContent = '$' + Math.round(annual).toLocaleString();
+  document.getElementById('calcROI').textContent = roi >= 1 ? Math.round(roi).toLocaleString() + '%' : roi.toFixed(1) + '%';
+}
 </script>
 </body>
 </html>

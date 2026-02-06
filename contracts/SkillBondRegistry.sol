@@ -7,14 +7,18 @@ interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 
-/// @title SkillBondRegistry — Economic Firewall for AI Agent Skills (v3)
+/// @title SkillBondRegistry — Economic Firewall for AI Agent Skills (v4)
 /// @notice Skills stake USDC to prove confidence. Malicious skills get slashed.
 ///         Whistleblowers earn 80% of the stake. Security becomes a market.
 ///         v2 adds: withdrawal flow, counter-stakes for flagging, time-based tiers.
 ///         v3 adds: evidence hashes on flags, usage fees (x402-style), sponsorship bonds.
+///         v4 adds: emergency pause, bulk queries, batch reads, input validation.
 contract SkillBondRegistry {
     IERC20 public immutable usdc;
     address public admin;
+
+    // v4: Emergency pause
+    bool public paused;
 
     uint256 public constant MIN_STAKE = 25 * 10**6; // 25 USDC (6 decimals)
     uint256 public constant WHISTLEBLOWER_BPS = 8000; // 80%
@@ -31,6 +35,9 @@ contract SkillBondRegistry {
     // v3: Usage fee constants
     uint256 public constant QUERY_FEE = 50000; // 0.05 USDC (6 decimals)
     uint256 public constant SKILL_OWNER_FEE_BPS = 7000; // 70%
+
+    // v4: Minimum sponsor amount (1 USDC)
+    uint256 public constant MIN_SPONSOR = 1 * 10**6; // 1 USDC (6 decimals)
 
     // Flag threshold for community slashing (decentralized)
     uint256 public flagThreshold;
@@ -88,8 +95,17 @@ contract SkillBondRegistry {
     event SkillSponsored(bytes32 indexed skillId, address indexed sponsor, uint256 amount, uint256 newTotalStake);
     event SponsorshipWithdrawn(bytes32 indexed skillId, address indexed sponsor, uint256 amount);
 
+    // v4: Pause events
+    event ProtocolPaused(address admin);
+    event ProtocolUnpaused(address admin);
+
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused, "Protocol is paused");
         _;
     }
 
@@ -105,8 +121,9 @@ contract SkillBondRegistry {
     /// @param _skillId Unique identifier (keccak256 of skill name + version)
     /// @param _metadataURI Link to skill manifest (IPFS, GitHub, etc.)
     /// @param _amount Amount of USDC to stake (6 decimals)
-    function stakeSkill(bytes32 _skillId, string calldata _metadataURI, uint256 _amount) external {
+    function stakeSkill(bytes32 _skillId, string calldata _metadataURI, uint256 _amount) external whenNotPaused {
         require(_amount >= MIN_STAKE, "Below minimum stake");
+        require(bytes(_metadataURI).length > 0, "Metadata URI required");
         require(skills[_skillId].owner == address(0), "Skill already registered");
 
         require(usdc.transferFrom(msg.sender, address(this), _amount), "USDC transfer failed");
@@ -129,7 +146,7 @@ contract SkillBondRegistry {
     /// @notice Flag a skill as potentially malicious. Requires 50% counter-stake.
     /// @param _skillId The skill to flag
     /// @param _evidenceHash On-chain proof hash of what the flagger observed
-    function flagSkill(bytes32 _skillId, bytes32 _evidenceHash) external {
+    function flagSkill(bytes32 _skillId, bytes32 _evidenceHash) external whenNotPaused {
         SkillBond storage s = skills[_skillId];
         require(s.owner != address(0), "Skill not found");
         require(s.status == SkillStatus.ACTIVE || s.status == SkillStatus.WITHDRAWING, "Skill not active");
@@ -155,7 +172,7 @@ contract SkillBondRegistry {
     ///         Whistleblower's counter-stake is also returned.
     /// @param _skillId The skill to slash
     /// @param _whistleblower The agent who discovered the vulnerability
-    function executeSlash(bytes32 _skillId, address _whistleblower) external onlyAdmin {
+    function executeSlash(bytes32 _skillId, address _whistleblower) external onlyAdmin whenNotPaused {
         SkillBond storage s = skills[_skillId];
         require(s.status != SkillStatus.SLASHED, "Already slashed");
         require(s.stakeAmount > 0, "Nothing to slash");
@@ -187,7 +204,7 @@ contract SkillBondRegistry {
     ///         Bounty goes to the first flagger. No admin needed.
     ///         First flagger's counter-stake is also returned.
     /// @param _skillId The skill to slash
-    function communitySlash(bytes32 _skillId) external {
+    function communitySlash(bytes32 _skillId) external whenNotPaused {
         require(flagThreshold > 0, "Community slash disabled");
         SkillBond storage s = skills[_skillId];
         require(s.status != SkillStatus.SLASHED, "Already slashed");
@@ -317,6 +334,11 @@ contract SkillBondRegistry {
         SkillBond storage s = skills[_skillId];
         require(s.owner != address(0), "Skill not found");
 
+        // v4: Don't charge fee for SLASHED or INACTIVE skills — return early with tier 0
+        if (s.status == SkillStatus.SLASHED || s.status == SkillStatus.INACTIVE) {
+            return (0, s.status, s.stakeAmount, block.timestamp - s.stakedAt);
+        }
+
         require(usdc.transferFrom(msg.sender, address(this), QUERY_FEE), "Fee transfer failed");
 
         uint256 ownerShare = (QUERY_FEE * SKILL_OWNER_FEE_BPS) / 10000;
@@ -332,7 +354,7 @@ contract SkillBondRegistry {
         stake = s.stakeAmount;
         age = block.timestamp - s.stakedAt;
 
-        if (s.owner == address(0) || s.status != SkillStatus.ACTIVE || s.stakeAmount == 0) {
+        if (s.stakeAmount == 0) {
             tier = 0;
         } else if (s.stakeAmount >= TIER_PREMIUM && age >= PREMIUM_MIN_AGE) {
             tier = 3;
@@ -366,8 +388,8 @@ contract SkillBondRegistry {
     /// @notice Sponsor a skill by adding additional USDC stake. Increases tier potential.
     /// @param _skillId The skill to sponsor
     /// @param _amount Amount of USDC to sponsor (6 decimals)
-    function sponsorSkill(bytes32 _skillId, uint256 _amount) external {
-        require(_amount > 0, "Amount must be positive");
+    function sponsorSkill(bytes32 _skillId, uint256 _amount) external whenNotPaused {
+        require(_amount >= MIN_SPONSOR, "Below minimum sponsor amount");
         SkillBond storage s = skills[_skillId];
         require(s.owner != address(0), "Skill not found");
         require(s.status == SkillStatus.ACTIVE, "Skill not active");
@@ -461,6 +483,71 @@ contract SkillBondRegistry {
         uint256 insurance
     ) {
         return (totalSkillsRegistered, totalSlashed, totalBountiesPaid, insuranceFund);
+    }
+
+    // ---- v4: Bulk Query Functions ----
+
+    /// @notice Batch query trust info for multiple skills in a single call.
+    ///         Returns arrays of (tier, stake, status) for each skill ID.
+    /// @param _skillIds Array of skill IDs to query
+    /// @return tiers Array of trust tiers (0-3)
+    /// @return stakes Array of stake amounts
+    /// @return statuses Array of skill statuses
+    function batchQueryTrust(bytes32[] calldata _skillIds) external view returns (
+        uint256[] memory tiers,
+        uint256[] memory stakes,
+        SkillStatus[] memory statuses
+    ) {
+        uint256 len = _skillIds.length;
+        tiers = new uint256[](len);
+        stakes = new uint256[](len);
+        statuses = new SkillStatus[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            SkillBond storage s = skills[_skillIds[i]];
+            statuses[i] = s.status;
+            stakes[i] = s.stakeAmount;
+
+            if (s.owner == address(0) || s.status != SkillStatus.ACTIVE || s.stakeAmount == 0) {
+                tiers[i] = 0;
+            } else {
+                uint256 age = block.timestamp - s.stakedAt;
+                if (s.stakeAmount >= TIER_PREMIUM && age >= PREMIUM_MIN_AGE) {
+                    tiers[i] = 3;
+                } else if (s.stakeAmount >= TIER_STANDARD && age >= STANDARD_MIN_AGE) {
+                    tiers[i] = 2;
+                } else {
+                    tiers[i] = 1;
+                }
+            }
+        }
+    }
+
+    /// @notice Batch read full skill bond details for multiple skills.
+    /// @param _skillIds Array of skill IDs to read
+    /// @return bonds Array of SkillBond structs
+    function getSkillBonds(bytes32[] calldata _skillIds) external view returns (SkillBond[] memory bonds) {
+        uint256 len = _skillIds.length;
+        bonds = new SkillBond[](len);
+        for (uint256 i = 0; i < len; i++) {
+            bonds[i] = skills[_skillIds[i]];
+        }
+    }
+
+    // ---- v4: Emergency Pause ----
+
+    /// @notice Pause the protocol. Disables staking, flagging, slashing, and sponsoring.
+    function pause() external onlyAdmin {
+        require(!paused, "Already paused");
+        paused = true;
+        emit ProtocolPaused(msg.sender);
+    }
+
+    /// @notice Unpause the protocol. Re-enables all operations.
+    function unpause() external onlyAdmin {
+        require(paused, "Not paused");
+        paused = false;
+        emit ProtocolUnpaused(msg.sender);
     }
 
     // ---- Admin ----

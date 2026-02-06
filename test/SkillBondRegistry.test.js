@@ -821,4 +821,280 @@ describe("SkillBondRegistry", function () {
       expect(stake).to.equal(0);
     });
   });
+
+  // ================================================================
+  // v4: BATCH QUERY TRUST (4 tests)
+  // ================================================================
+  describe("Batch Query Trust (v4)", function () {
+    const SKILL_ID_2 = ethers.keccak256(ethers.toUtf8Bytes("skill-batch-2"));
+    const SKILL_ID_3 = ethers.keccak256(ethers.toUtf8Bytes("skill-batch-3"));
+    const UNREGISTERED = ethers.keccak256(ethers.toUtf8Bytes("unregistered-skill"));
+
+    it("should return correct tiers for multiple skills", async function () {
+      const registryAddr = await registry.getAddress();
+
+      // Mint extra USDC for hunter and randomUser to cover larger stakes
+      await usdc.mint(hunter.address, STANDARD_STAKE);
+      await usdc.connect(hunter).approve(registryAddr, STANDARD_STAKE);
+      await usdc.mint(randomUser.address, PREMIUM_STAKE);
+      await usdc.connect(randomUser).approve(registryAddr, PREMIUM_STAKE);
+
+      // Register 3 skills with different stakes
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);   // 25 USDC -> tier 1
+      await stakeSkill(hunter, SKILL_ID_2, STANDARD_STAKE);   // 500 USDC -> tier 1 (no age yet)
+      await stakeSkill(randomUser, SKILL_ID_3, PREMIUM_STAKE); // 10K USDC -> tier 1 (no age yet)
+
+      const [tiers, stakes, statuses] = await registry.batchQueryTrust([SKILL_ID, SKILL_ID_2, SKILL_ID_3]);
+
+      expect(tiers[0]).to.equal(1);
+      expect(tiers[1]).to.equal(1); // not enough age for tier 2
+      expect(tiers[2]).to.equal(1); // not enough age for tier 3
+
+      expect(stakes[0]).to.equal(STAKE_AMOUNT);
+      expect(stakes[1]).to.equal(STANDARD_STAKE);
+      expect(stakes[2]).to.equal(PREMIUM_STAKE);
+
+      expect(statuses[0]).to.equal(ACTIVE);
+      expect(statuses[1]).to.equal(ACTIVE);
+      expect(statuses[2]).to.equal(ACTIVE);
+
+      // Advance time to 31 days: SKILL_ID_2 qualifies for tier 2, SKILL_ID_3 qualifies for tier 2
+      await increaseTime(THIRTY_DAYS + 1);
+      const [tiers2] = await registry.batchQueryTrust([SKILL_ID, SKILL_ID_2, SKILL_ID_3]);
+      expect(tiers2[0]).to.equal(1); // basic stake stays tier 1
+      expect(tiers2[1]).to.equal(2); // 500 USDC + 30 days = tier 2
+      expect(tiers2[2]).to.equal(2); // 10K USDC + 30 days = tier 2 (not 90 days yet)
+    });
+
+    it("should handle mix of registered and unregistered skills", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+
+      const [tiers, stakes, statuses] = await registry.batchQueryTrust([SKILL_ID, UNREGISTERED]);
+
+      expect(tiers[0]).to.equal(1);
+      expect(stakes[0]).to.equal(STAKE_AMOUNT);
+      expect(statuses[0]).to.equal(ACTIVE);
+
+      // Unregistered skill returns defaults
+      expect(tiers[1]).to.equal(0);
+      expect(stakes[1]).to.equal(0);
+      expect(statuses[1]).to.equal(INACTIVE); // default enum value
+    });
+
+    it("should return tier 0 for slashed skills in batch", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await stakeSkill(hunter, SKILL_ID_2, STANDARD_STAKE);
+
+      // Slash SKILL_ID
+      await flagSkill(hunter, SKILL_ID);
+      await registry.connect(admin).executeSlash(SKILL_ID, hunter.address);
+
+      const [tiers, stakes, statuses] = await registry.batchQueryTrust([SKILL_ID, SKILL_ID_2]);
+
+      expect(tiers[0]).to.equal(0);    // slashed -> tier 0
+      expect(stakes[0]).to.equal(0);    // stake zeroed
+      expect(statuses[0]).to.equal(SLASHED);
+
+      expect(tiers[1]).to.equal(1);     // still active
+      expect(stakes[1]).to.equal(STANDARD_STAKE);
+      expect(statuses[1]).to.equal(ACTIVE);
+    });
+
+    it("should work with empty array", async function () {
+      const [tiers, stakes, statuses] = await registry.batchQueryTrust([]);
+      expect(tiers.length).to.equal(0);
+      expect(stakes.length).to.equal(0);
+      expect(statuses.length).to.equal(0);
+    });
+  });
+
+  // ================================================================
+  // v4: EMERGENCY PAUSE (8 tests)
+  // ================================================================
+  describe("Emergency Pause (v4)", function () {
+    it("should allow admin to pause", async function () {
+      await expect(registry.connect(admin).pause())
+        .to.emit(registry, "ProtocolPaused")
+        .withArgs(admin.address);
+      expect(await registry.paused()).to.be.true;
+    });
+
+    it("should prevent staking when paused", async function () {
+      await registry.connect(admin).pause();
+      await expect(
+        registry.connect(skillOwner).stakeSkill(SKILL_ID, "ipfs://metadata", STAKE_AMOUNT)
+      ).to.be.revertedWith("Protocol is paused");
+    });
+
+    it("should prevent flagging when paused", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await registry.connect(admin).pause();
+      await expect(
+        registry.connect(hunter).flagSkill(SKILL_ID, EVIDENCE_HASH)
+      ).to.be.revertedWith("Protocol is paused");
+    });
+
+    it("should prevent slashing when paused", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await flagSkill(hunter, SKILL_ID);
+      await registry.connect(admin).pause();
+      await expect(
+        registry.connect(admin).executeSlash(SKILL_ID, hunter.address)
+      ).to.be.revertedWith("Protocol is paused");
+    });
+
+    it("should prevent sponsoring when paused", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await registry.connect(admin).pause();
+      await expect(
+        registry.connect(sponsor1).sponsorSkill(SKILL_ID, 100n * USDC)
+      ).to.be.revertedWith("Protocol is paused");
+    });
+
+    it("should allow admin to unpause", async function () {
+      await registry.connect(admin).pause();
+      expect(await registry.paused()).to.be.true;
+
+      await expect(registry.connect(admin).unpause())
+        .to.emit(registry, "ProtocolUnpaused")
+        .withArgs(admin.address);
+      expect(await registry.paused()).to.be.false;
+
+      // Staking should work again after unpause
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      const [trusted] = await registry.isSkillTrusted(SKILL_ID);
+      expect(trusted).to.be.true;
+    });
+
+    it("should still allow withdrawals when paused", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await registry.connect(skillOwner).initiateWithdrawal(SKILL_ID);
+      await increaseTime(SEVEN_DAYS + 1);
+
+      await registry.connect(admin).pause();
+
+      // completeWithdrawal does NOT have whenNotPaused, so it should work
+      const balBefore = await usdc.balanceOf(skillOwner.address);
+      await registry.connect(skillOwner).completeWithdrawal(SKILL_ID);
+      const balAfter = await usdc.balanceOf(skillOwner.address);
+
+      expect(balAfter - balBefore).to.equal(STAKE_AMOUNT);
+    });
+
+    it("should still allow queries (view functions) when paused", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await registry.connect(admin).pause();
+
+      // View functions should not revert
+      const tier = await registry.getTrustTier(SKILL_ID);
+      expect(tier).to.equal(1);
+
+      const [trusted, stake] = await registry.isSkillTrusted(SKILL_ID);
+      expect(trusted).to.be.true;
+      expect(stake).to.equal(STAKE_AMOUNT);
+
+      const status = await registry.getSkillStatus(SKILL_ID);
+      expect(status).to.equal(ACTIVE);
+
+      // batchQueryTrust is also a view function
+      const [tiers] = await registry.batchQueryTrust([SKILL_ID]);
+      expect(tiers[0]).to.equal(1);
+    });
+  });
+
+  // ================================================================
+  // v4: INPUT VALIDATION (3 tests)
+  // ================================================================
+  describe("Input Validation (v4)", function () {
+    const QUERY_FEE = 50000n;
+
+    it("should reject empty metadataURI", async function () {
+      await expect(
+        registry.connect(skillOwner).stakeSkill(SKILL_ID, "", STAKE_AMOUNT)
+      ).to.be.revertedWith("Metadata URI required");
+    });
+
+    it("should reject dust sponsor amounts (below 1 USDC)", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+
+      // Try to sponsor with 0.5 USDC (500000 in 6-decimal = 500000 < 1000000)
+      const dustAmount = 500000n; // 0.5 USDC
+      await expect(
+        registry.connect(sponsor1).sponsorSkill(SKILL_ID, dustAmount)
+      ).to.be.revertedWith("Below minimum sponsor amount");
+
+      // Exactly 1 USDC should work
+      await registry.connect(sponsor1).sponsorSkill(SKILL_ID, 1n * USDC);
+      const [, stake] = await registry.isSkillTrusted(SKILL_ID);
+      expect(stake).to.equal(STAKE_AMOUNT + 1n * USDC);
+    });
+
+    it("should not charge fee for querying slashed/inactive skills", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+
+      // Slash the skill
+      await flagSkill(hunter, SKILL_ID);
+      await registry.connect(admin).executeSlash(SKILL_ID, hunter.address);
+
+      // queryTrust on slashed skill should NOT charge a fee
+      const balBefore = await usdc.balanceOf(querier1.address);
+      const result = await registry.connect(querier1).queryTrust.staticCall(SKILL_ID);
+      // Execute for real to confirm no revert and no fee charged
+      await registry.connect(querier1).queryTrust(SKILL_ID);
+      const balAfter = await usdc.balanceOf(querier1.address);
+
+      expect(balBefore - balAfter).to.equal(0); // no fee charged
+      expect(result.tier).to.equal(0);
+      expect(result.status).to.equal(SLASHED);
+    });
+  });
+
+  // ================================================================
+  // v4: BATCH GET SKILL BONDS (2 tests)
+  // ================================================================
+  describe("Batch Get Skill Bonds (v4)", function () {
+    const SKILL_ID_2 = ethers.keccak256(ethers.toUtf8Bytes("skill-batchget-2"));
+    const UNREGISTERED = ethers.keccak256(ethers.toUtf8Bytes("unregistered-batchget"));
+
+    it("should return correct bond info for multiple skills", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+      await stakeSkill(hunter, SKILL_ID_2, STANDARD_STAKE);
+
+      const bonds = await registry.getSkillBonds([SKILL_ID, SKILL_ID_2]);
+
+      expect(bonds.length).to.equal(2);
+
+      // First bond
+      expect(bonds[0].owner).to.equal(skillOwner.address);
+      expect(bonds[0].stakeAmount).to.equal(STAKE_AMOUNT);
+      expect(bonds[0].metadataURI).to.equal("ipfs://metadata");
+      expect(bonds[0].status).to.equal(ACTIVE);
+      expect(bonds[0].flagCount).to.equal(0);
+
+      // Second bond
+      expect(bonds[1].owner).to.equal(hunter.address);
+      expect(bonds[1].stakeAmount).to.equal(STANDARD_STAKE);
+      expect(bonds[1].metadataURI).to.equal("ipfs://metadata");
+      expect(bonds[1].status).to.equal(ACTIVE);
+    });
+
+    it("should return empty/default for unregistered skills", async function () {
+      await stakeSkill(skillOwner, SKILL_ID, STAKE_AMOUNT);
+
+      const bonds = await registry.getSkillBonds([SKILL_ID, UNREGISTERED]);
+
+      expect(bonds.length).to.equal(2);
+
+      // Registered skill has data
+      expect(bonds[0].owner).to.equal(skillOwner.address);
+      expect(bonds[0].stakeAmount).to.equal(STAKE_AMOUNT);
+
+      // Unregistered skill has zero/default values
+      expect(bonds[1].owner).to.equal(ethers.ZeroAddress);
+      expect(bonds[1].stakeAmount).to.equal(0);
+      expect(bonds[1].metadataURI).to.equal("");
+      expect(bonds[1].status).to.equal(INACTIVE);
+      expect(bonds[1].flagCount).to.equal(0);
+    });
+  });
 });

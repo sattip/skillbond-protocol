@@ -1,10 +1,38 @@
-# SkillBond v3: Economic Proof-of-Trust for AI Agent Skills
+# SkillBond v4: Economic Proof-of-Trust for AI Agent Skills
 
 > **Makes trust expensive to fake and cheap to verify.**
 
-SkillBond is a smart contract protocol that creates an economic trust signal for AI agent skills. Developers stake real capital (USDC) and declare permissions on-chain. Agents query stake, scope, and behavioral history to make autonomous trust decisions. Registry is permissionless; slashing is progressively decentralized (committee → arbitration), because fully decentralized slashing on day one is gameable. v3 adds paid trust queries (x402-style usage fees), sponsorship bonds, and on-chain evidence hashes for verifiable flagging. SkillBond is a signal layer, not a prevention layer — closer to a credit score than a vault door.
+SkillBond is a smart contract protocol that creates an economic trust signal for AI agent skills. Developers stake real capital (USDC) and declare permissions on-chain. Agents query stake, scope, and behavioral history to make autonomous trust decisions. Registry is permissionless; slashing is progressively decentralized (committee → arbitration), because fully decentralized slashing on day one is gameable. v4 adds batch queries, emergency pause, and input validation on top of v3's paid trust queries, sponsorship bonds, and on-chain evidence hashes. SkillBond is a signal layer, not a prevention layer — closer to a credit score than a vault door.
 
-**v3 Live on Base Sepolia** · [Landing Page](https://skillbond-protocol.vercel.app/) · [Moltbook Submission](https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec)
+**v4 Live on Base Sepolia** · [Landing Page](https://skillbond-protocol.vercel.app/) · [Moltbook Submission](https://www.moltbook.com/post/6e1c5c26-2442-4603-9bb9-476e4f8ba5ec)
+
+---
+
+## Quickstart
+
+**Register a skill in 2 minutes:**
+
+```javascript
+const { SkillBondClient } = require("@skillbond/sdk");
+
+const client = new SkillBondClient({
+  rpcUrl: "https://base-sepolia.g.alchemy.com/v2/YOUR_KEY",
+  contractAddress: "0xYOUR_CONTRACT_ADDRESS",
+  signer: yourWallet, // ethers.js Wallet or Signer
+});
+
+const tx = await client.stakeSkill("my-skill-v1", "ipfs://QmManifest...", "100");
+await tx.wait(); // Staked 100 USDC. Skill is now ACTIVE, tier BASIC.
+```
+
+**Check trust in one line:**
+
+```javascript
+const { trusted, tierLabel, stakeFormatted } = await client.isSkillTrusted("my-skill-v1");
+// true, "BASIC", "100.00"
+```
+
+See the full [SDK documentation](#sdk-integration) below.
 
 ---
 
@@ -175,6 +203,131 @@ Anyone can sponsor a skill by adding USDC stake on its behalf. This solves the c
 
 ---
 
+## SDK Integration
+
+Install the JavaScript SDK:
+
+```bash
+npm install @skillbond/sdk
+```
+
+### Basic Usage
+
+```javascript
+const { SkillBondClient } = require("@skillbond/sdk");
+
+// Read-only client (no signer needed for queries)
+const client = new SkillBondClient({
+  rpcUrl: process.env.RPC_URL,
+  contractAddress: process.env.SKILLBOND_ADDRESS,
+});
+
+// Check trust
+const { trusted, tier, tierLabel, stakeFormatted } = await client.isSkillTrusted("weather-v2");
+console.log(`Trusted: ${trusted}, Tier: ${tierLabel}, Stake: ${stakeFormatted} USDC`);
+
+// Batch check multiple skills at once
+const results = await client.batchQueryTrust([
+  "code-review-v1",
+  "data-fetch-v2",
+  "email-sender-v1",
+]);
+results.forEach(r => console.log(`${r.tierLabel}: ${r.stakeFormatted} USDC`));
+```
+
+### Policy Enforcement
+
+Set local trust policies and enforce them before loading any skill:
+
+```javascript
+client.setPolicy({
+  minStake: "500",    // Minimum 500 USDC staked
+  minTier: 2,         // Minimum STANDARD tier
+  minAge: 2592000,    // Minimum 30 days old
+});
+
+const { allowed, reasons } = await client.checkPolicy("untrusted-skill");
+if (!allowed) {
+  console.log("Blocked:", reasons);
+  // ["Trust tier 0 (NONE) is below minimum tier 2 (STANDARD)"]
+}
+```
+
+### LangChain / CrewAI Integration
+
+Use the SDK as a trust gatekeeper in any agent framework:
+
+```javascript
+const client = new SkillBondClient({
+  rpcUrl: process.env.RPC_URL,
+  contractAddress: process.env.SKILLBOND_ADDRESS,
+});
+client.setPolicy({ minTier: 2, minStake: "100" });
+
+// Middleware: gate skill loading on trust
+async function loadSkillIfTrusted(skillName, loadFn) {
+  const { allowed, reasons } = await client.checkPolicy(skillName);
+  if (!allowed) throw new Error(`Skill "${skillName}" blocked: ${reasons.join(", ")}`);
+  return loadFn(skillName);
+}
+
+// LangChain
+const tool = await loadSkillIfTrusted("web-scraper-v2", (name) => {
+  return new DynamicTool({ name, func: scrapeFn });
+});
+
+// CrewAI
+const task = await loadSkillIfTrusted("data-analysis-v1", (name) => {
+  return new Task({ description: "Analyze data", tool: name });
+});
+```
+
+### Event Listeners
+
+```javascript
+client.onSkillStaked((skillId, owner, amount, metadataURI) => {
+  console.log(`New skill staked: ${skillId} by ${owner}`);
+});
+
+client.onSkillSlashed((skillId, whistleblower, bounty, burned) => {
+  console.log(`Skill slashed: ${skillId}, bounty: ${bounty}`);
+});
+```
+
+Full SDK docs: [`sdk/README.md`](./sdk/README.md)
+
+---
+
+## What's New in v4
+
+### Batch Queries (on-chain)
+
+Query trust info for multiple skills in a single RPC call. No more N+1 queries.
+
+| Function | Description |
+|---|---|
+| `batchQueryTrust(skillIds[])` | Returns tiers, stakes, and statuses for all skills in one call (view, free) |
+| `getSkillBonds(skillIds[])` | Returns full bond structs for all skills in one call (view, free) |
+
+The SDK also exposes `client.batchQueryTrust(names[])` which resolves names to IDs and queries in parallel.
+
+### Emergency Pause
+
+Admin can pause the protocol in an emergency. Pausing disables staking, flagging, slashing, and sponsoring. Withdrawals and view functions remain available.
+
+| Function | Description |
+|---|---|
+| `pause()` | Admin-only. Pauses all write operations except withdrawals |
+| `unpause()` | Admin-only. Re-enables all operations |
+
+### Input Validation Improvements
+
+- `stakeSkill` requires a non-empty `metadataURI` — prevents registering skills with no manifest
+- `sponsorSkill` enforces a minimum 1 USDC sponsor amount — prevents dust sponsorships
+- `queryTrust` returns early without charging fees for SLASHED or INACTIVE skills — no wasted USDC on dead skills
+
+---
+
 ## Contract Functions
 
 ### Core
@@ -207,8 +360,20 @@ Anyone can sponsor a skill by adding USDC stake on its behalf. This solves the c
 ### Sponsorship (v3)
 | Function | Mutability | Description |
 |---|---|---|
-| `sponsorSkill(skillId, amount)` | write | Sponsor a skill by adding USDC to its stake |
+| `sponsorSkill(skillId, amount)` | write | Sponsor a skill by adding USDC to its stake (min 1 USDC) |
 | `withdrawSponsorship(skillId)` | write | Withdraw sponsorship after 7-day cooldown |
+
+### Batch Queries (v4)
+| Function | Mutability | Description |
+|---|---|---|
+| `batchQueryTrust(skillIds[])` | view | Batch query tiers, stakes, statuses for multiple skills |
+| `getSkillBonds(skillIds[])` | view | Batch read full bond details for multiple skills |
+
+### Emergency Pause (v4)
+| Function | Mutability | Description |
+|---|---|---|
+| `pause()` | write (admin) | Pause the protocol (disables staking, flagging, slashing, sponsoring) |
+| `unpause()` | write (admin) | Unpause the protocol |
 
 ### View (Free)
 | Function | Mutability | Description |
@@ -382,11 +547,31 @@ The cold-start problem is real. Here is the specific wedge:
 
 ---
 
+## Deployment
+
+| Network | Address | Status |
+|---|---|---|
+| Base Sepolia | Deployment in progress | Testnet |
+
+**USDC on Base Sepolia:** `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+
+**Verify on BaseScan:**
+
+```bash
+forge verify-contract <CONTRACT_ADDRESS> SkillBondRegistry \
+  --chain base-sepolia \
+  --constructor-args $(cast abi-encode "constructor(address,uint256)" 0x036CbD53842c5426634e7929541eC2318f3dCF7e 3)
+```
+
+---
+
 ## Tests
 
 ```
-64/64 tests passing
+81/81 tests passing
 ```
+
+Covers core staking, flagging, slashing, withdrawals, usage fees, sponsorship, batch queries, emergency pause, input validation, and edge cases.
 
 ## License
 
